@@ -1,0 +1,17 @@
+ ==== Cal file started with file: cal.in.txt !
+3
+Calc type is quadratic, first arg is -7, second arg is 12
+first
+(1, -7, 12) solutions = 4.000000, 3.000000
+
+Calc type is triples, first arg is 10, second arg is 20
+second
+-- 3, 4, sqrt = 5
+-- 5, 12, sqrt = 13
+-- 8, 15, sqrt = 17
+
+Calc type is mod-sum, first arg is 100, second arg is 1000
+third
+sum from 1 to 100 is 50
+
+The End!
