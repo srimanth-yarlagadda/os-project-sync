@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include <string.h>
 
+// adding merge sort function place holder here
+// trying to understand what needs to be implemented
+// at this point
+
+void merge_sort(int* array) {
+
+}
+
 void main(int argc, char *argv[]) {
     // printf(" ==== Cal file started with file: %s !\n", argv[1]);
     int a, i,j; int k,l; int sign = 1;
