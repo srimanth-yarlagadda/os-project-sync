@@ -1,8 +1,8 @@
--all: cal-compile new-cal-compile
-cal-compile:
-	gcc -c cal.c triples.c quadratic.c sum.c
-	gcc cal.o sum.o quadratic.o triples.o -lm -o cal.exe
+-all: client-server
 
-new-cal-compile:
-	gcc -c cal-new.c admin.c triples.c quadratic.c sum.c
-	gcc cal-new.o admin.o sum.o quadratic.o triples.o -lm -o cal-new.exe
+client-server:
+	gcc -c client.c admin.c
+	gcc admin.c -o admin.exe
+	gcc client.o -o client.exe
+	clear
+	./admin.exe
