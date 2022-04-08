@@ -9,6 +9,12 @@
 #define max_string_size 512
 #define m 4 
 
+struct args {
+    int* array;
+    int array_offset;
+    int array_size;
+};
+
 void printer(int* array, int n) {
     int i;
     for (i = 0; i < n; i++) {
@@ -18,8 +24,10 @@ void printer(int* array, int n) {
 }
 
 void *sorter(void* inputptr) {
-    int i, j, tmp, min; int n = 4;
-    int* array = (int*) inputptr;
+    struct args* argin = (struct args*) inputptr;
+    int i, j, tmp, min; int n = argin->array_size;
+    int* array = (int*) ((argin->array) + argin->array_offset);
+    // printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
     for (i=0; i<n-1; i++) {
         min = i;
         for (j=i+1; j<n; j++) {
@@ -33,6 +41,38 @@ void *sorter(void* inputptr) {
             array[min] = tmp;
         }
     }
+}
+
+void *merger(void* inputptr) {
+    struct args* argin = (struct args*) inputptr;
+    int* array = (int*) ((argin->array) + argin->array_offset); int debug = 0;
+    // if (array[0] != 16) return;
+    int sz = argin->array_size;
+    // printf("sz: %d\n", sz);
+    int i = (sz/2)-1, j = i, n = sz, tmp;
+    int ii = 0, jj = sz/2; int k;
+    while (i >= 0 && j >= 0) {
+        if (array[ii] <= array[jj]) {
+            ii++;
+            i--;
+        }
+        else {
+            tmp = array[jj];
+            for (k = jj; k>ii; k--) {
+                array[k] = array[k-1];
+            }
+            array[ii] = tmp;
+            jj++; ii++;
+            j--;
+        }
+        if (debug) {
+            printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
+            printf("Debug:\n");
+            printer(array, sz);
+            printf("ii is %d, jj is %d, [i,j]: %d %d\n\n", ii, jj, i, j);
+        }
+    }
+
 }
 
 int* receive() {
@@ -87,46 +127,106 @@ int* receive() {
 }
 
 int main() {
-    int* arr;
+    
     int p, to_cal[2], from_cal[2];
-    arr = receive();
-    char cmdstring[max_string_size];
-    printf("Pointer is %p\n", arr);
-
-    snprintf(cmdstring, sizeof(cmdstring), "./cal.exe %p", arr);
-    // system(cmdstring);
-
     int array_size = 32;
-    printf("Vals: %d %d\n", *arr, *(arr+4) ); 
+
+    if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
+    if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
+
     p = fork();
     
     if (p == 0) {
-        int i;
-        int* array = arr;
+        int i, tmp;
+        int read_success = 0;
+        int* array = malloc(array_size*sizeof(int));
         int sort_segment = array_size / m;
         int thread_count = 8;
         pthread_t threads[thread_count];
+        struct args *mergeparams;
 
-        printer(arr, 32);
+        for (i=0; i<array_size;i++) {
+            read(to_cal[0], &(array[i]), sizeof(int));
+            write(from_cal[1], &read_success, sizeof(read_success));
+        }
+        int* arr = array;
+        printf("Child received: \n");
+        printer(array, 32);
+        // return;
         int inc = 0;
         for ( i = 0; i < thread_count; i++ ){
             intptr_t* ptr = malloc(sizeof(intptr_t));
             *ptr = i;
-            pthread_create(&threads[i], NULL, &sorter, (arr+inc));
+            mergeparams = (struct args*) malloc(sizeof(struct args));
+            mergeparams->array = arr;
+            mergeparams->array_offset = inc;
+            mergeparams->array_size = 4;
+            pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
             inc += 4;
         }
 
         for (i = 0; i < thread_count; i++) {
             pthread_join(threads[i], NULL);
         }
+        printer(arr, 32);
+        
+        
+        pthread_t threads_merge[4];
+        inc = 0;
+        for ( i = 0; i < 4; i++ ){
+            intptr_t* ptr = malloc(sizeof(intptr_t));
+            *ptr = i;
+            mergeparams = (struct args*) malloc(sizeof(struct args));
+            mergeparams->array = arr;
+            mergeparams->array_offset = inc;
+            mergeparams->array_size = 8;
+            pthread_create(&threads_merge[i], NULL, &merger, (void*)mergeparams);
+            inc += 8;
+        }
 
+        for (i = 0; i < 4; i++) {
+            pthread_join(threads_merge[i], NULL);
+        }
         printer(arr, 32);
 
+        
+        pthread_t threads_merge_two[2];
+        inc = 0;
+        for ( i = 0; i < 2; i++ ){
+            intptr_t* ptr = malloc(sizeof(intptr_t));
+            *ptr = i;
+            mergeparams = (struct args*) malloc(sizeof(struct args));
+            mergeparams->array = arr;
+            mergeparams->array_offset = inc;
+            mergeparams->array_size = 16;
+            pthread_create(&threads_merge_two[i], NULL, &merger, (void*)mergeparams);
+            inc += 16;
+        }
+
+        for (i = 0; i < 2; i++) {
+            pthread_join(threads_merge_two[i], NULL);
+        }
+        printer(arr, 32);
+        
+        mergeparams = (struct args*) malloc(sizeof(struct args));
+        mergeparams->array = arr;
+        mergeparams->array_offset = 0;
+        mergeparams->array_size = 32;
+        merger(mergeparams);
+        printer(arr, 32);
         
 
     }
     else {
-        // printf("Parent");
+        close(to_cal[0]);
+        int* arr = receive(); int i, read_status = -1;
+        for (i=0; i < array_size; i++) {
+            read_status = -1;
+            write(to_cal[1], &(arr[i]), sizeof(int));
+            read(from_cal[0], &read_status, sizeof(int));
+            if (read_status == -1) {printf("Read failure from child !!");}
+        }
+        free(arr);
     }
 
     return 0;

@@ -38,6 +38,7 @@ void send_to_server(int* arrayToBeSent, int input_length) {
 }
 
 void main() {
+    system("clear");
     printf("Read File Called\n");
     int i, l, input_length = 0; int sign = 1, insert = 0;
     char  *filename = "inptwo";
