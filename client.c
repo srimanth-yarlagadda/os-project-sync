@@ -5,8 +5,56 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-void send_to_server(int* arrayToBeSent, int input_length) {
+struct file_details {
+    char* filename;
+    int* input_array;
+    int input_length;
+};
+
+struct file_details* read_request(char* filename) {
+    printf("Read request...\n");
+    int i, l, input_length = 0; int sign = 1, insert = 0;
+    FILE *fp = fopen(filename, "r");
+    char ch;
+    while ((ch = fgetc(fp)) != '\n') {
+        input_length *= 10;
+        input_length += ch - '0';
+    }
+    printf("[%d] values: ", input_length);
+    struct file_details* file_info = (struct file_details*) malloc(sizeof(struct file_details));
+    int* input_array = (int*) malloc(sizeof(int)*input_length);
     
+    i = 0;
+    while (ch != EOF) {
+        l = 0;
+        while (((ch = fgetc(fp)) != '\n') & ch != EOF & ch != ' ') {
+            insert = 1;
+            if (ch == '-') {sign = -1;}
+            else {
+                l *= 10;
+                l += ch - '0';        
+            }
+        }
+        l *= sign; sign = 1;
+        if (insert == 1) {
+            (input_array[i]) = l;
+            i++;
+        }
+        insert = 0;
+    }
+
+    for (i = 0; i < input_length; i++) {
+        printf("%d ", (input_array)[i]); 
+    }
+    printf("\n");
+    fclose(fp);
+    file_info->filename = filename;
+    file_info->input_array = input_array;
+    file_info->input_length = input_length;
+    return file_info;
+}
+
+void send_to_server(int* arrayToBeSent, int input_length) {
     // following code is taken from slides used in lecture
     int soc = socket(AF_INET, SOCK_STREAM, 0);
     
@@ -21,10 +69,8 @@ void send_to_server(int* arrayToBeSent, int input_length) {
         printf("Connection Error !! \n");
     }
     else {
-        printf("Connection Success !! \n");
+        // printf("Connection Success !! \n");
     }
-
-    char data[100] = "Hello World!!";
     if (send(soc, &input_length, 100, 0) < 0) {
         printf("Send Failure !!\n");
         return;
@@ -34,48 +80,20 @@ void send_to_server(int* arrayToBeSent, int input_length) {
         send(soc, &(arrayToBeSent[i]), sizeof(int), 0);
         // printf("Sending %d: %d\n", i, arrayToBeSent[i]);
     }
+    printf("Request sent to server...\n\n");
     close(soc);
 }
 
 void main() {
     system("clear");
-    printf("Read File Called\n");
-    int i, l, input_length = 0; int sign = 1, insert = 0;
-    char  *filename = "inptwo";
-    FILE *fp = fopen(filename, "r");
-    char ch;
-    while ((ch = fgetc(fp)) != '\n') {
-        input_length *= 10;
-        input_length += ch - '0';
+    char scanfilename[50];
+    while(1) {
+        printf("Enter filename: ");
+        scanf("%s", scanfilename);
+        if (strcmp(scanfilename, "end") == 0) break;
+        struct file_details* request = read_request(scanfilename);
+        send_to_server(request->input_array, request->input_length);
     }
-    printf("Input length = %d\n", input_length);
-    int* array_vals = (int*) malloc(sizeof(int)*input_length);
-    i = 0;
-    while (ch != EOF) {
-        l = 0;
-        while (((ch = fgetc(fp)) != '\n') & ch != EOF & ch != ' ') {
-            insert = 1;
-            if (ch == '-') {sign = -1;}
-            else {
-                l *= 10;
-                l += ch - '0';        
-            }
-        }
-        l *= sign; sign = 1;
-        if (insert == 1) {
-            (array_vals[i]) = l;
-            i++;
-        }
-        insert = 0;
-    }
-
-    for (i = 0; i < input_length; i++) {
-        printf("%d ", (array_vals)[i]); 
-    }
-    printf("\n");
-    fclose(fp);
-    // printf("Sending pointer: %p\n", array_vals);
-    send_to_server(array_vals, input_length);
     printf(" *** Ending Client *** \n");
     return;
 }

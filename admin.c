@@ -7,7 +7,8 @@
 #include <netinet/in.h>
 
 #define max_string_size 512
-#define m 4 
+#define m 4
+#define max_array_size 1024
 
 struct args {
     int* array;
