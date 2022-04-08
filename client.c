@@ -93,6 +93,7 @@ void main() {
         if (strcmp(scanfilename, "end") == 0) break;
         struct file_details* request = read_request(scanfilename);
         send_to_server(request->input_array, request->input_length);
+        free(request);
     }
     printf(" *** Ending Client *** \n");
     return;
