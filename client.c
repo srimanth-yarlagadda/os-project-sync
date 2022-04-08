@@ -13,7 +13,7 @@ void send_to_server(int* arrayToBeSent, int input_length) {
     struct sockaddr_in servAddr;
     bzero ((char *) &servAddr, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
-    servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servAddr.sin_addr.s_addr = inet_addr("10.176.92.14");
     servAddr.sin_port = htons(1038);
 
     int connect_status = connect (soc, (struct sockaddr *) &servAddr, sizeof(servAddr) );
@@ -27,6 +27,7 @@ void send_to_server(int* arrayToBeSent, int input_length) {
     char data[100] = "Hello World!!";
     if (send(soc, &input_length, 100, 0) < 0) {
         printf("Send Failure !!\n");
+        return;
     }
     int i;
     for (i=0; i<input_length; i++) {
@@ -39,7 +40,7 @@ void send_to_server(int* arrayToBeSent, int input_length) {
 void main() {
     printf("Read File Called\n");
     int i, l, input_length = 0; int sign = 1, insert = 0;
-    char  *filename = "inp.txt";
+    char  *filename = "inptwo";
     FILE *fp = fopen(filename, "r");
     char ch;
     while ((ch = fgetc(fp)) != '\n') {

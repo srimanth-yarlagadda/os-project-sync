@@ -1,8 +1,9 @@
 -all: client-server
 
 client-server:
-	gcc -c client.c admin.c
-	gcc admin.c -o admin.exe
-	gcc client.o -o client.exe
 	clear
+	gcc -c client.c admin.c cal.c
+	gcc admin.c -lpthread -o admin.exe
+	gcc client.o -o client.exe
+	gcc cal.o -o cal.exe
 	./admin.exe
