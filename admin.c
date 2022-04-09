@@ -2,18 +2,26 @@
 #include <string.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define max_string_size 512
-#define m 4
+#define m 8
 #define max_array_size 1024
+
+struct request {
+    char* filename;
+    int* input_array;
+    int input_length;
+};
 
 struct args {
     int* array;
     int array_offset;
     int array_size;
+    // sem_t sem_array[];
 };
 
 void printer(int* array, int n) {
@@ -28,7 +36,6 @@ void *sorter(void* inputptr) {
     struct args* argin = (struct args*) inputptr;
     int i, j, tmp, min; int n = argin->array_size;
     int* array = (int*) ((argin->array) + argin->array_offset);
-    // printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
     for (i=0; i<n-1; i++) {
         min = i;
         for (j=i+1; j<n; j++) {
@@ -76,7 +83,7 @@ void *merger(void* inputptr) {
 
 }
 
-int* receive() {
+struct request* receive() {
     int i;
     // following code is taken from slides used in lecture
     int soc = socket(AF_INET, SOCK_STREAM, 0);
@@ -107,7 +114,8 @@ int* receive() {
         printf("Connection Accepted !!\n");
     }
 
-    char data[100]; int* input_buffer; int input_length;
+    char fname[50]; int* input_buffer; int input_length;
+    recv(acceptance_fd, &fname, 50, 0);
     recv(acceptance_fd, &input_length, 100, 0);
     printf("Array Size is: %d\n", input_length);
     
@@ -117,14 +125,16 @@ int* receive() {
         recv(acceptance_fd, &tmp, sizeof(int), 0);
         input_buffer[i] = tmp;
     }
-    // int* arr = input_buffer;
-    // qsort (input_buffer, sizeof(input_buffer)/sizeof(*input_buffer), sizeof(*input_buffer), comp);
-    // sorter(input_buffer, input_length);
     printf("Printing received data: \n");
     printer(input_buffer, input_length);
     printf("\n");
     close(soc);
-    return input_buffer;
+    struct request* req = (struct request*) malloc(sizeof(struct request));
+    req->filename = fname;
+    req->input_array = input_buffer;
+    req->input_length = input_length;
+
+    return req;
 }
 
 int main() {
@@ -142,7 +152,7 @@ int main() {
         int read_success = 0;
         int* array = malloc(array_size*sizeof(int));
         int sort_segment = array_size / m;
-        int thread_count = 8;
+        int thread_count = m;
         pthread_t threads[thread_count];
         struct args *mergeparams;
 
@@ -220,7 +230,10 @@ int main() {
     }
     else {
         close(to_cal[0]);
-        int* arr = receive(); int i, read_status = -1;
+
+        struct request* currentreq = receive();
+        int* arr = currentreq->input_array;
+        int i, read_status = -1;
         for (i=0; i < array_size; i++) {
             read_status = -1;
             write(to_cal[1], &(arr[i]), sizeof(int));
