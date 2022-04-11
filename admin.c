@@ -3,52 +3,102 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define max_string_size 512
 #define m 8
+#define mext 13
 #define max_array_size 1024
 
 struct request {
     char* filename;
     int* input_array;
     int input_length;
+    struct request* next;
 };
 
 struct args {
     int* array;
     int array_offset;
     int array_size;
-    // sem_t sem_array[];
+    // sem_t* semph;
+    pthread_mutex_t *mutx;
 };
 
 void printer(int* array, int n) {
-    int i;
+    int i, j=4;
+    printf("[");
     for (i = 0; i < n; i++) {
+        if (j==0) {
+            printf("\b] ["); j = 4;
+        }
         printf("%d ", array[i]); 
+        j--;
     }
-    printf("\n");
+    printf("\b]\n");
+}
+
+struct request* reqHead = NULL;
+struct request* reqTail = NULL;
+
+void addReq(struct request* r)  {
+    if (reqHead == NULL) {
+        reqHead = r;
+        reqTail = r;
+    }
+    else {
+        reqTail->next = r;
+        reqTail = r;
+    }
+}
+
+struct request* getReq() {
+    if (reqHead == NULL) return NULL;
+    else {
+        struct request* tmp = reqHead;
+        reqHead = reqHead->next;
+        return tmp;
+    }
 }
 
 void *sorter(void* inputptr) {
-    struct args* argin = (struct args*) inputptr;
-    int i, j, tmp, min; int n = argin->array_size;
-    int* array = (int*) ((argin->array) + argin->array_offset);
-    for (i=0; i<n-1; i++) {
-        min = i;
-        for (j=i+1; j<n; j++) {
-            if (array[j] < array[min]) {
-                min = j;
+    // while (inputptr!=NULL) {
+        struct args* argin = (struct args*) inputptr;
+        int bef = -5, aft = -1; 
+
+        // sem_getvalue(argin->semph, &bef);
+        // sem_wait(argin->semph);
+        // sem_getvalue(argin->semph, &aft);
+
+        // while (inputptr != NULL) 
+
+        
+        if ((aft = pthread_mutex_trylock(argin->mutx)) == 0) {
+            printf("Thread %d, before: %d after %d for array %p\n", (argin->array_offset)/4, bef, aft, argin->array);
+            int i, j, tmp, min; int n = argin->array_size;
+            int* array = (int*) ((argin->array) + argin->array_offset);
+            for (i=0; i<n-1; i++) {
+                min = i;
+                for (j=i+1; j<n; j++) {
+                    if (array[j] < array[min]) {
+                        min = j;
+                    }
+                }
+                if (min!=i) {
+                    tmp = array[i];
+                    array[i] = array[min];
+                    array[min] = tmp;
+                }
             }
+            free(inputptr);
+            // pthread_mutex_unlock(argin->mutx);
+            // sem_post(argin->semph);
+            // free(inputptr);
         }
-        if (min!=i) {
-            tmp = array[i];
-            array[i] = array[min];
-            array[min] = tmp;
-        }
-    }
+    // }
 }
 
 void *merger(void* inputptr) {
@@ -92,11 +142,13 @@ struct request* receive() {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(1038);
-    printf("Socket in admin.c is: %d\n", soc);
+    // printf("Socket in admin.c is: %d\n", soc);
 
     int bind_ret = bind(soc, (struct sockaddr *) &addr, sizeof(addr));
     if (bind_ret < 0) {printf("Error while binding\n");}
-    else {printf("Binding Success !!\n");}
+    else {
+        // printf("Binding Success !!\n");
+        }
     
     int listen_status = listen(soc, 100);
     if (listen_status == 0) {
@@ -125,9 +177,9 @@ struct request* receive() {
         recv(acceptance_fd, &tmp, sizeof(int), 0);
         input_buffer[i] = tmp;
     }
-    printf("Printing received data: \n");
-    printer(input_buffer, input_length);
-    printf("\n");
+    // printf("Printing received data: \n");
+    // printer(input_buffer, input_length);
+    // printf("\n");
     close(soc);
     struct request* req = (struct request*) malloc(sizeof(struct request));
     req->filename = fname;
@@ -140,7 +192,7 @@ struct request* receive() {
 int main() {
     
     int p, to_cal[2], from_cal[2];
-    int array_size = 32;
+    
 
     if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
     if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
@@ -148,8 +200,14 @@ int main() {
     p = fork();
     
     if (p == 0) {
-        int i, tmp;
+        int array_size=32;
         int read_success = 0;
+        // read(to_cal[0], (&array_size), sizeof(int));
+        // write(from_cal[1], &read_success, sizeof(read_success));
+        // printf("Array Size at Child %d \n", array_size);
+
+        int i, tmp;
+        
         int* array = malloc(array_size*sizeof(int));
         int sort_segment = array_size / m;
         int thread_count = m;
@@ -163,7 +221,24 @@ int main() {
         int* arr = array;
         printf("Child received: \n");
         printer(array, 32);
-        // return;
+
+        // ======================
+        // Creating Threads Here
+        // ======================
+
+        // sem_t semarray[thread_count]; 
+        int initstatus, semret = -5;
+        pthread_mutex_t semarray[thread_count];
+        pthread_mutex_t test;
+        
+        for ( i=0; i<thread_count; i++) {
+            // initstatus = sem_init(&semarray[i], 0, 1);
+            // sem_getvalue(&semarray[i], &semret);
+            initstatus = pthread_mutex_init(&semarray[i], NULL);
+            // (&semarray[i]) = PTHREAD_MUTEX_INITIALIZER;
+            printf("Semaphore %d init'ed with status %d and value %d\n", i, initstatus, semret);
+        }
+
         int inc = 0;
         for ( i = 0; i < thread_count; i++ ){
             intptr_t* ptr = malloc(sizeof(intptr_t));
@@ -171,15 +246,20 @@ int main() {
             mergeparams = (struct args*) malloc(sizeof(struct args));
             mergeparams->array = arr;
             mergeparams->array_offset = inc;
-            mergeparams->array_size = 4;
+            mergeparams->array_size = sort_segment;
+            // mergeparams->semph = &semarray[i];
+            mergeparams->mutx = &semarray[i];
             pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
-            inc += 4;
+            inc += (mergeparams->array_size);
         }
 
-        for (i = 0; i < thread_count; i++) {
-            pthread_join(threads[i], NULL);
-        }
+        // Joining Threads Here
+        // ====================
+        // for (i = 0; i < thread_count; i++) {
+        //     pthread_join(threads[i], NULL);
+        // }
         printer(arr, 32);
+        // sleep(5);
         
         
         pthread_t threads_merge[4];
@@ -190,7 +270,7 @@ int main() {
             mergeparams = (struct args*) malloc(sizeof(struct args));
             mergeparams->array = arr;
             mergeparams->array_offset = inc;
-            mergeparams->array_size = 8;
+            mergeparams->array_size = 2*sort_segment;
             pthread_create(&threads_merge[i], NULL, &merger, (void*)mergeparams);
             inc += 8;
         }
@@ -209,7 +289,7 @@ int main() {
             mergeparams = (struct args*) malloc(sizeof(struct args));
             mergeparams->array = arr;
             mergeparams->array_offset = inc;
-            mergeparams->array_size = 16;
+            mergeparams->array_size = 4*sort_segment;
             pthread_create(&threads_merge_two[i], NULL, &merger, (void*)mergeparams);
             inc += 16;
         }
@@ -222,7 +302,7 @@ int main() {
         mergeparams = (struct args*) malloc(sizeof(struct args));
         mergeparams->array = arr;
         mergeparams->array_offset = 0;
-        mergeparams->array_size = 32;
+        mergeparams->array_size = 8*sort_segment;
         merger(mergeparams);
         printer(arr, 32);
         
@@ -234,7 +314,12 @@ int main() {
         struct request* currentreq = receive();
         int* arr = currentreq->input_array;
         int i, read_status = -1;
-        for (i=0; i < array_size; i++) {
+
+        // write(to_cal[1], &(currentreq->input_length), sizeof(int));
+        // read(from_cal[0], &read_status, sizeof(int));
+
+
+        for (i=0; i < (currentreq->input_length); i++) {
             read_status = -1;
             write(to_cal[1], &(arr[i]), sizeof(int));
             read(from_cal[0], &read_status, sizeof(int));
