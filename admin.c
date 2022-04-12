@@ -194,7 +194,7 @@ struct request* receive(int soc) {
     char fname[200]; int input_length; int* input_buffer;
     recv(acceptance_fd, &fname, sizeof(fname), 0);
     // printf("RECV %s\n", fname);
-    recv(acceptance_fd, &input_length, 100, 0);
+    recv(acceptance_fd, &input_length, sizeof(int), 0);
     // printf("Array %s Size is: %d\n", fname, input_length);
     
     input_buffer = (int*) malloc(sizeof(int)*input_length);
