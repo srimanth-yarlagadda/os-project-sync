@@ -98,15 +98,17 @@ void send_to_server(char* fname, int* arrayToBeSent, int input_length) {
 void main() {
     system("clear");
     int clientid;
-    char scanfilename[200];
+    char scanfilename[200] = "i";
     while(1) {
-        printf("Enter filename: ");
-        scanf("%s", scanfilename);
+        // printf("Enter filename: ");
+        // scanf("%s", scanfilename);
+        // scanfilename = "i";
         if (strcmp(scanfilename, "end") == 0) break;
         if (strcmp(scanfilename, "restart") == 0) system("./client.exe");
         struct file_details* request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
+        sleep(1);
     }
     printf(" *** Ending Client *** \n");
     return;

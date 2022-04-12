@@ -89,20 +89,23 @@ int* getFreeArray() {
     int i, slock_before, slock_after;
     for (i=0;i<5;i++) {
         if (arrayList[i]->free==1) {
+            printf("Trying...%d...", i);
             sem_wait(&(arrayList[i]->arraySemph));
             arrayList[i]->free = 0;
             int* free_return = arrayList[i]->workArray;
+            printf("Returning array %p @ %d !!\n", free_return, i);
             return free_return;
         }
-        else return NULL;
+        // else return NULL;
     }
+    return NULL;
 }
 
 void putFreeArray(int* arr) {
     int i;
     for (i=0;i<5;i++) {
         if (arrayList[i]->workArray == arr) {
-            arrayList[i]->free = 1;
+            // arrayList[i]->free = 1;
             sem_post(&(arrayList[i]->arraySemph));
             printf("Array %p @ %d put successful\n", arr, i);
         }
@@ -268,7 +271,16 @@ void finalMerge(int* arr) {
     return;
 }
 
-void arraySort(struct request* newrequest, int m, int d) {
+struct arraysortparams {
+    struct request* r;
+    int m; int d;
+};
+
+void *arraySort(void* ap) {
+    struct arraysortparams* params = (struct arraysortparams*) ap;
+    int m = params->m;
+    int d = params->d;
+    struct request* newrequest = params->r;
     int i, thread_count = m;
     pthread_t threads[thread_count];
     struct args *mergeparams;
@@ -276,6 +288,9 @@ void arraySort(struct request* newrequest, int m, int d) {
     int sort_segment = newrequest->input_length / m;
     sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
+
+    sleep(4);
+    printf("\nCreated Thread from AS\n");
     // pthread_mutex_t semarray[createthreads];
     
     for ( i=0; i< createthreads; i++) {
@@ -330,7 +345,6 @@ void arraySort(struct request* newrequest, int m, int d) {
         pthread_join(threads_merge[i], NULL);
     }
     // printer(arr, 32);
-
     
     pthread_t threads_merge_two[2];
     inc = 0;
@@ -344,9 +358,9 @@ void arraySort(struct request* newrequest, int m, int d) {
         pthread_create(&threads_merge_two[i], NULL, &merger, (void*)mergeparams);
         inc += 16;
     }
-    for (i = 0; i < 2; i++) {
-        pthread_join(threads_merge_two[i], NULL);
-    }
+    // for (i = 0; i < 2; i++) {
+    //     pthread_join(threads_merge_two[i], NULL);
+    // }
     // printer(arr, 32);
 
     mergeparams = (struct args*) malloc(sizeof(struct args));
@@ -360,7 +374,15 @@ void arraySort(struct request* newrequest, int m, int d) {
     return;
 }
 
+void arraySort_HL(void* ap) {
+    pthread_t th;
+    pthread_create(&th, NULL, &arraySort, ap);
+    // putFreeArray(array);
+    return;
+}
+
 int main() {
+    system("clear");
     int m=8,a=5,q=5,d=0;
     // printf("Enter number of parallel threads: \n");
     // scanf("%d",&m);
@@ -384,7 +406,8 @@ int main() {
         initArrays(a);
 
         char fname[200];
-        while (1) {
+        int run = 5;
+        while (run>=0) {
 
             array = getFreeArray();
             
@@ -407,10 +430,17 @@ int main() {
             newReq->input_array = array;
             newReq->input_length = array_size;
             
-            arraySort(newReq, m, d);
+            struct arraysortparams* para = (struct arraysortparams*) malloc(sizeof(struct arraysortparams));
+            para->r = newReq;
+            para->m = m;
+            para->d = d;
+
+            arraySort_HL(para);
+            printf("\nReturned without waiting in HL\n");
             putFreeArray(array);
             free(newReq);
             // system("./cal.exe teststring 32");
+            run--;
         }
 
     }
@@ -420,8 +450,8 @@ int main() {
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
-
-        while (1) {
+        int run = 5;
+        while (run>=0) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
         
@@ -440,6 +470,7 @@ int main() {
                 if (read_status == -1) {printf("Read failure from child !!");}
             }
             free(arr);
+            run--;
         }
 
         kill(p, SIGKILL);
