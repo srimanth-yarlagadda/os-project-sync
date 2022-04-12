@@ -105,7 +105,7 @@ void putFreeArray(int* arr) {
     int i;
     for (i=0;i<5;i++) {
         if (arrayList[i]->workArray == arr) {
-            // arrayList[i]->free = 1;
+            arrayList[i]->free = 1;
             sem_post(&(arrayList[i]->arraySemph));
             printf("Array %p @ %d put successful\n", arr, i);
         }
@@ -370,6 +370,7 @@ void *arraySort(void* ap) {
     merger(mergeparams);
     printf("Final: \n");
     printer(arr, 32);
+    putFreeArray(mergeparams->array);
     free(mergeparams);
     return;
 }
@@ -406,7 +407,7 @@ int main() {
         initArrays(a);
 
         char fname[200];
-        int run = 5;
+        int run = 8;
         while (run>=0) {
 
             array = getFreeArray();
@@ -437,7 +438,7 @@ int main() {
 
             arraySort_HL(para);
             printf("\nReturned without waiting in HL\n");
-            putFreeArray(array);
+            // putFreeArray(array);
             free(newReq);
             // system("./cal.exe teststring 32");
             run--;
@@ -450,7 +451,7 @@ int main() {
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
-        int run = 5;
+        int run = 8;
         while (run>=0) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
