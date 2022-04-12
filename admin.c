@@ -10,8 +10,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+// #inlcude <definitions.h>
+
 #define max_string_size 512
-#define m 8
 #define mext 13
 #define createthreads 16 // 8+4+2+1+1
 #define max_array_size 1024
@@ -21,6 +22,11 @@ struct request {
     int* input_array;
     int input_length;
     struct request* next;
+};
+
+struct workarrays {
+    int* workArray;
+    sem_t arraySemph;
 };
 
 struct args {
@@ -65,6 +71,16 @@ struct request* getReq() {
         struct request* tmp = reqHead;
         reqHead = reqHead->next;
         return tmp;
+    }
+}
+
+struct workarrays* arrayList[5];
+void initArrays(int a) {
+    int i = 0;
+    for (i=0;i<a;i++) {
+        arrayList[i] = (struct workarrays*) malloc(sizeof(struct workarrays));
+        arrayList[i]->workArray = (int*)malloc(1024*sizeof(int));
+        sem_init(&(arrayList[i]->arraySemph), 0, 1);
     }
 }
 
@@ -176,7 +192,7 @@ struct request* receive(int soc) {
     // printf("Socket in admin.c is: %d\n", soc);
     int listen_status = listen(soc, 100);
     if (listen_status == 0) {
-        printf("Listening...");
+        printf("Listening...\n");
         fflush(stdout);
     }
     else {
@@ -226,7 +242,7 @@ void finalMerge(int* arr) {
     return;
 }
 
-void arraySort(struct request* newrequest) {
+void arraySort(struct request* newrequest, int m, int d) {
     int i, thread_count = m;
     pthread_t threads[thread_count];
     struct args *mergeparams;
@@ -312,17 +328,24 @@ void arraySort(struct request* newrequest) {
     mergeparams->array_offset = 0;
     mergeparams->array_size = 8*sort_segment;
     merger(mergeparams);
-    printf("Final: \n\t");
+    printf("Final: \n");
     printer(arr, 32);
     free(mergeparams);
     return;
 }
 
 int main() {
-    
+    int m=8,a=5,q=5,d=0;
+    // printf("Enter number of parallel threads: \n");
+    // scanf("%d",&m);
+    // printf("Enter number of arrays: \n");
+    // scanf("%d",&a);
+    // printf("Enter queue size: \n");
+    // scanf("%d",&q);
+    // printf("Enable debug? [1 for yes / 0 for no]: \n");
+    // scanf("%d",&d);
+    printf("Starting with following parameters: M %d, A %d, D %d, Q %d\n", m,a,d,q);
     int p, to_cal[2], from_cal[2];
-    
-
     if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
     if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
 
@@ -330,9 +353,10 @@ int main() {
     
     if (p == 0) {
 
-
         int array_size, i, tmp, thread_count = m, read_success = 0;
         int *array;
+        initArrays(a);
+
         char fname[200];
         while (1) {
             
@@ -355,8 +379,9 @@ int main() {
             newReq->input_array = array;
             newReq->input_length = array_size;
             
-            arraySort(newReq);
+            arraySort(newReq, m, d);
             free(newReq);
+            // system("./cal.exe teststring 32");
         }
 
     }
