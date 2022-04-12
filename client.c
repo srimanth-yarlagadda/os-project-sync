@@ -56,7 +56,7 @@ struct file_details* read_request(char* filename) {
 }
 
 void send_to_server(char* fname, int* arrayToBeSent, int input_length) {
-    char fnname[50];
+    char fnname[200];
     strcat(fnname, fname);
     // following code is taken from slides used in lecture
     int soc = socket(AF_INET, SOCK_STREAM, 0);
@@ -76,31 +76,34 @@ void send_to_server(char* fname, int* arrayToBeSent, int input_length) {
     }
     
     // printf("client print %s\n", fnname);
-    if (send(soc, &fnname, 50, 0) < 0) {
-        printf("Send Failure !!\n");
-        return;
-    }
-    if (send(soc, &input_length, 100, 0) < 0) {
-        printf("Send Failure !!\n");
-        return;
-    }
+    send(soc, fnname, sizeof(fnname), 0);
+    send(soc, &input_length, sizeof(int), 0);
+    // if (send(soc, &fnname, 200, 0) < 0) {
+    //     printf("Send Failure !!\n");
+    //     return;
+    // }
+    // if (send(soc, &input_length, 100, 0) < 0) {
+    //     printf("Send Failure !!\n");
+    //     return;
+    // }
     int i;
     for (i=0; i<input_length; i++) {
         send(soc, &(arrayToBeSent[i]), sizeof(int), 0);
         // printf("Sending %d: %d\n", i, arrayToBeSent[i]);
     }
-    printf("Request sent to server...\n\n");
+    printf("Request %s sent to server...\n\n", fnname);
     close(soc);
 }
 
 void main() {
     system("clear");
     int clientid;
-    char scanfilename[50];
+    char scanfilename[200];
     while(1) {
         printf("Enter filename: ");
         scanf("%s", scanfilename);
         if (strcmp(scanfilename, "end") == 0) break;
+        if (strcmp(scanfilename, "restart") == 0) system("./client.exe");
         struct file_details* request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);

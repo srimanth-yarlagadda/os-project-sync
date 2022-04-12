@@ -173,10 +173,11 @@ struct request* receive(int soc) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(1038);
-    printf("Socket in admin.c is: %d\n", soc);
+    // printf("Socket in admin.c is: %d\n", soc);
     int listen_status = listen(soc, 100);
     if (listen_status == 0) {
-        printf("Listening...\n");
+        printf("Listening...");
+        fflush(stdout);
     }
     else {
         printf("Listen Error !!\n");
@@ -190,10 +191,11 @@ struct request* receive(int soc) {
         printf("Connection Accepted !!\n");
     }
 
-    char fname[50]; int* input_buffer; int input_length;
-    recv(acceptance_fd, &fname, 50, 0);
+    char fname[200]; int input_length; int* input_buffer;
+    recv(acceptance_fd, &fname, sizeof(fname), 0);
+    // printf("RECV %s\n", fname);
     recv(acceptance_fd, &input_length, 100, 0);
-    printf("Array Size is: %d\n", input_length);
+    // printf("Array %s Size is: %d\n", fname, input_length);
     
     input_buffer = (int*) malloc(sizeof(int)*input_length);
     int tmp;
@@ -201,10 +203,11 @@ struct request* receive(int soc) {
         recv(acceptance_fd, &tmp, sizeof(int), 0);
         input_buffer[i] = tmp;
      }
-    printf("Printing received data at socket: \n");
-    printer(input_buffer, input_length);
+    // printf("Printing received data at socket: \n");
+    // printer(input_buffer, input_length);
     // printf("\n");
     // close(soc);
+    close(acceptance_fd);
     struct request* req = (struct request*) malloc(sizeof(struct request));
     req->filename = fname;
     req->input_array = input_buffer;
@@ -309,7 +312,7 @@ void arraySort(struct request* newrequest) {
     mergeparams->array_offset = 0;
     mergeparams->array_size = 8*sort_segment;
     merger(mergeparams);
-    printf("Final: \n");
+    printf("Final: \n\t");
     printer(arr, 32);
     free(mergeparams);
     return;
@@ -330,59 +333,63 @@ int main() {
 
         int array_size, i, tmp, thread_count = m, read_success = 0;
         int *array;
+        char fname[200];
         while (1) {
+            
+            read(to_cal[0], &fname, sizeof(fname));
+            write(from_cal[1], &read_success, sizeof(read_success));
+            // printf("Request \"%s\"\n\t", fname);
             read(to_cal[0], (&array_size), sizeof(int));
             write(from_cal[1], &read_success, sizeof(read_success));
-            printf("Array Size at Child %d \n", array_size);
-
-            
             
             array = malloc(array_size*sizeof(int));
-        
-            
-
             for (i=0; i<array_size;i++) {
                 read(to_cal[0], &(array[i]), sizeof(int));
                 write(from_cal[1], &read_success, sizeof(read_success));
             }
-            printf("Child received: \n");
+            
             printer(array, 32);
 
             struct request* newReq = (struct request*) malloc(sizeof(struct request));
-            newReq->filename = "new file";
+            newReq->filename = fname;
             newReq->input_array = array;
             newReq->input_length = array_size;
-            
             
             arraySort(newReq);
             free(newReq);
         }
 
-
-                
-
     }
     else {
         close(to_cal[0]);
         int socket = createServer();
-        struct request* currentreq = receive(socket);
-        int* arr = currentreq->input_array;
+        struct request* currentreq;
+        int* arr;
         int i, read_status = -1;
 
-        write(to_cal[1], &(currentreq->input_length), sizeof(int));
-        read(from_cal[0], &read_status, sizeof(int));
-
-
-        for (i=0; i < (currentreq->input_length); i++) {
-            read_status = -1;
-            write(to_cal[1], &(arr[i]), sizeof(int));
+        while (1) {
+            currentreq = receive(socket);
+            arr = currentreq->input_array;
+        
+            // printf("Sending %s from parent to child\n", currentreq->filename);
+            write(to_cal[1], currentreq->filename, 200);
             read(from_cal[0], &read_status, sizeof(int));
-            if (read_status == -1) {printf("Read failure from child !!");}
+
+            write(to_cal[1], &(currentreq->input_length), sizeof(int));
+            read(from_cal[0], &read_status, sizeof(int));
+
+
+            for (i=0; i < (currentreq->input_length); i++) {
+                read_status = -1;
+                write(to_cal[1], &(arr[i]), sizeof(int));
+                read(from_cal[0], &read_status, sizeof(int));
+                if (read_status == -1) {printf("Read failure from child !!");}
+            }
+            free(arr);
         }
-        free(arr);
-        // printf("\n\n\n");
-        currentreq = receive(socket);
+
         kill(p, SIGKILL);
+        close(socket);
 
     }
 
