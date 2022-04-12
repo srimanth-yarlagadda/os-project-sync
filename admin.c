@@ -26,6 +26,7 @@ struct request {
 
 struct workarrays {
     int* workArray;
+    int free;
     sem_t arraySemph;
 };
 
@@ -80,8 +81,33 @@ void initArrays(int a) {
     for (i=0;i<a;i++) {
         arrayList[i] = (struct workarrays*) malloc(sizeof(struct workarrays));
         arrayList[i]->workArray = (int*)malloc(1024*sizeof(int));
+        arrayList[i]->free = 1;
         sem_init(&(arrayList[i]->arraySemph), 0, 1);
     }
+}
+int* getFreeArray() {
+    int i, slock_before, slock_after;
+    for (i=0;i<5;i++) {
+        if (arrayList[i]->free==1) {
+            sem_wait(&(arrayList[i]->arraySemph));
+            arrayList[i]->free = 0;
+            int* free_return = arrayList[i]->workArray;
+            return free_return;
+        }
+        else return NULL;
+    }
+}
+
+void putFreeArray(int* arr) {
+    int i;
+    for (i=0;i<5;i++) {
+        if (arrayList[i]->workArray == arr) {
+            arrayList[i]->free = 1;
+            sem_post(&(arrayList[i]->arraySemph));
+            printf("Array %p @ %d put successful\n", arr, i);
+        }
+    }
+    return;
 }
 
 void *sorter(void* inputptr) {
@@ -359,6 +385,8 @@ int main() {
 
         char fname[200];
         while (1) {
+
+            array = getFreeArray();
             
             read(to_cal[0], &fname, sizeof(fname));
             write(from_cal[1], &read_success, sizeof(read_success));
@@ -366,7 +394,7 @@ int main() {
             read(to_cal[0], (&array_size), sizeof(int));
             write(from_cal[1], &read_success, sizeof(read_success));
             
-            array = malloc(array_size*sizeof(int));
+            // array = malloc(array_size*sizeof(int));
             for (i=0; i<array_size;i++) {
                 read(to_cal[0], &(array[i]), sizeof(int));
                 write(from_cal[1], &read_success, sizeof(read_success));
@@ -380,6 +408,7 @@ int main() {
             newReq->input_length = array_size;
             
             arraySort(newReq, m, d);
+            putFreeArray(array);
             free(newReq);
             // system("./cal.exe teststring 32");
         }
