@@ -39,6 +39,7 @@ struct workarrays {
 
 
 struct args* mpA[8];
+sem_t        mpS[8];
 
 struct args {
     int* array;
@@ -46,6 +47,7 @@ struct args {
     int array_size;
     sem_t* semph;
     int* sortstatus;
+    int thid;
     // pthread_mutex_t *mutx;
 };
 
@@ -138,37 +140,38 @@ sem_t* getThreadSemph(int* array, int offset) {
 }
 
 void *sorter(void* inputptr) {
-    
-    struct args* argin = (struct args*) inputptr;
-    // sem_wait(argin->threadSemph[(argin->array_offset)/4]);
-    int bef = -5, aft = -1;
-    sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
-    sem_getvalue(threadSp, &bef);
-    sem_wait(threadSp);
-    sem_getvalue(threadSp, &aft);
-    
-    if (masterDebug) {
-        printf("Thread [%d] %lu before %d after %d for semaphore %p\n", 
-        (argin->array_offset)/4, (long unsigned int)pthread_self(), bef, aft, threadSp);
-    }
+    // while (1) {
 
-    int i, j, tmp, min; int n = argin->array_size;
-    int* array = (int*) ((argin->array) + argin->array_offset);
-    for (i=0; i<n-1; i++) {
-        min = i;
-        for (j=i+1; j<n; j++) {
-            if (array[j] < array[min]) {
-                min = j;
+        struct args* argin = (struct args*) inputptr;
+        sem_wait(&mpS[argin->thid]);
+        int bef = -5, aft = -1;
+        sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
+        sem_getvalue(threadSp, &bef);
+        sem_wait(threadSp);
+        sem_getvalue(threadSp, &aft);
+    
+        if (masterDebug) {
+            printf("Thread [%d] %lu before %d after %d for semaphore %p\n", 
+            (argin->array_offset)/4, (long unsigned int)pthread_self(), bef, aft, threadSp);
+        }
+
+        int i, j, tmp, min; int n = argin->array_size;
+        int* array = (int*) ((argin->array) + argin->array_offset);
+        for (i=0; i<n-1; i++) {
+            min = i;
+            for (j=i+1; j<n; j++) {
+                if (array[j] < array[min]) {
+                    min = j;
+                }
+            }
+            if (min!=i) {
+                tmp = array[i];
+                array[i] = array[min];
+                array[min] = tmp;
             }
         }
-        if (min!=i) {
-            tmp = array[i];
-            array[i] = array[min];
-            array[min] = tmp;
-        }
-    }
-    sem_post(threadSp);
-    // sem_post(argin->threadSemph[(argin->array_offset)/4]);
+        sem_post(threadSp);
+    // }
            
 }
 
@@ -294,13 +297,9 @@ void initMPA() {
     struct args *mergeparams;
     for ( i = 0; i < 8; i++ ){
         mergeparams = (struct args*) malloc(sizeof(struct args));
-        // mergeparams->array = arr;
-        // mergeparams->array_offset = inc;
-        // mergeparams->array_size = sort_segment;
-        // mergeparams->semph = &semarray[i];
-        // mergeparams->sortstatus = &(secsorted[i]);
-        // mergeparams->mutx = &semarray[i];
-        // arrayofargs[i] = NULL;
+        mergeparams->thid = i;
+        sem_init(&mpS[i], 0, 1);
+        sem_wait(&mpS[i]);
         mpA[i] = mergeparams;
     }
     return;
@@ -320,7 +319,7 @@ void *arraySort(void* ap) {
     // sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
 
-    sleep(1);
+    sleep(4);
     printf("\nCreated Thread from AS\n");
 
     int inc = 0;
@@ -342,6 +341,7 @@ void *arraySort(void* ap) {
         arrayofargs[i] = NULL;
         
         pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
+        sem_post(&mpS[i]);
         inc += (mergeparams->array_size);
     }
     
