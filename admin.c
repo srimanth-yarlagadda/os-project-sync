@@ -38,6 +38,8 @@ struct workarrays {
 };
 
 
+struct args* mpA[8];
+
 struct args {
     int* array;
     int array_offset;
@@ -287,6 +289,23 @@ struct arraysortparams {
     int m; int d;
 };
 
+void initMPA() {
+    int i;
+    struct args *mergeparams;
+    for ( i = 0; i < 8; i++ ){
+        mergeparams = (struct args*) malloc(sizeof(struct args));
+        // mergeparams->array = arr;
+        // mergeparams->array_offset = inc;
+        // mergeparams->array_size = sort_segment;
+        // mergeparams->semph = &semarray[i];
+        // mergeparams->sortstatus = &(secsorted[i]);
+        // mergeparams->mutx = &semarray[i];
+        // arrayofargs[i] = NULL;
+        mpA[i] = mergeparams;
+    }
+    return;
+}
+
 void *arraySort(void* ap) {
     struct arraysortparams* params = (struct arraysortparams*) ap;
     int m = params->m;
@@ -312,9 +331,8 @@ void *arraySort(void* ap) {
     }
     // printer(secsorted, 8);
     for ( i = 0; i < thread_count; i++ ){
-        intptr_t* ptr = malloc(sizeof(intptr_t));
-        *ptr = i;
-        mergeparams = (struct args*) malloc(sizeof(struct args));
+        
+        mergeparams = mpA[i];
         mergeparams->array = arr;
         mergeparams->array_offset = inc;
         mergeparams->array_size = sort_segment;
@@ -405,6 +423,7 @@ int main() {
         int *array;
         initArrays(a);
         sem_init(&sorterFnMain, 0, 1);
+        initMPA();
 
         char fname[200];
         
