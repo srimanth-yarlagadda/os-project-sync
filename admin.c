@@ -17,6 +17,8 @@
 #define createthreads 16 // 8+4+2+1+1
 #define max_array_size 1024
 
+void arraySort_HL(void* ap);
+
 struct request {
     char* filename;
     int* input_array;
@@ -375,12 +377,7 @@ void *arraySort(void* ap) {
     return;
 }
 
-void arraySort_HL(void* ap) {
-    pthread_t th;
-    pthread_create(&th, NULL, &arraySort, ap);
-    // putFreeArray(array);
-    return;
-}
+
 
 int main() {
     system("clear");
@@ -411,37 +408,42 @@ int main() {
         while (run>=0) {
 
             array = getFreeArray();
+            if (array != NULL) {
             
-            read(to_cal[0], &fname, sizeof(fname));
-            write(from_cal[1], &read_success, sizeof(read_success));
-            // printf("Request \"%s\"\n\t", fname);
-            read(to_cal[0], (&array_size), sizeof(int));
-            write(from_cal[1], &read_success, sizeof(read_success));
-            
-            // array = malloc(array_size*sizeof(int));
-            for (i=0; i<array_size;i++) {
-                read(to_cal[0], &(array[i]), sizeof(int));
+                read(to_cal[0], &fname, sizeof(fname));
                 write(from_cal[1], &read_success, sizeof(read_success));
+                // printf("Request \"%s\"\n\t", fname);
+                read(to_cal[0], (&array_size), sizeof(int));
+                write(from_cal[1], &read_success, sizeof(read_success));
+                
+                // array = malloc(array_size*sizeof(int));
+                for (i=0; i<array_size;i++) {
+                    read(to_cal[0], &(array[i]), sizeof(int));
+                    write(from_cal[1], &read_success, sizeof(read_success));
+                }
+                
+                printer(array, 32);
+
+                struct request* newReq = (struct request*) malloc(sizeof(struct request));
+                newReq->filename = fname;
+                newReq->input_array = array;
+                newReq->input_length = array_size;
+                
+                struct arraysortparams* para = (struct arraysortparams*) malloc(sizeof(struct arraysortparams));
+                para->r = newReq;
+                para->m = m;
+                para->d = d;
+
+                arraySort_HL(para);
+                // printf("\nReturned without waiting in HL\n");
+                // putFreeArray(array);
+                free(newReq);
+                // system("./cal.exe teststring 32");
+                run--;
             }
-            
-            printer(array, 32);
-
-            struct request* newReq = (struct request*) malloc(sizeof(struct request));
-            newReq->filename = fname;
-            newReq->input_array = array;
-            newReq->input_length = array_size;
-            
-            struct arraysortparams* para = (struct arraysortparams*) malloc(sizeof(struct arraysortparams));
-            para->r = newReq;
-            para->m = m;
-            para->d = d;
-
-            arraySort_HL(para);
-            printf("\nReturned without waiting in HL\n");
-            // putFreeArray(array);
-            free(newReq);
-            // system("./cal.exe teststring 32");
-            run--;
+            else {
+                printf("Got no free array!\n"); sleep(2);
+            }
         }
 
     }

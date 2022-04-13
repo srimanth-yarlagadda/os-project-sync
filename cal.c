@@ -1,14 +1,18 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
-void merge_sort(int* array) {
 
-}
+void *arraySort(void* ap);
 
-void main(int argc, char *argv[]) {
-    printf("\n\nCal started with arg 1: %s \n", argv[1]);
-    printf("Cal started with arg 2: %s \n\n", argv[2]);
-
-    
+void arraySort_HL(void* ap) {
+    pthread_t th;
+    pthread_create(&th, NULL, &arraySort, ap);
     return;
-}
+};
