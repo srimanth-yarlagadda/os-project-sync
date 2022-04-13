@@ -21,6 +21,8 @@
 
 void arraySort_HL(void* ap);
 
+sem_t sorterFnMain;
+
 struct request {
     char* filename;
     int* input_array;
@@ -299,17 +301,8 @@ void *arraySort(void* ap) {
     // sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
 
-    sleep(4);
+    sleep(1);
     printf("\nCreated Thread from AS\n");
-    // pthread_mutex_t semarray[createthreads];
-    
-    // for ( i=0; i< createthreads; i++) {
-    //     initstatus = sem_init(&semarray[i], 0, 1);
-    //     sem_getvalue(&semarray[i], &semret);
-    //     // initstatus = pthread_mutex_init(&semarray[i], NULL);
-    //     // (&semarray[i]) = PTHREAD_MUTEX_INITIALIZER;
-    //     // printf("Semaphore %d init'ed with status %d and value %d\n", i, initstatus, semret);
-    // }
 
     int inc = 0;
     struct args* arrayofargs[thread_count];
@@ -382,6 +375,7 @@ void *arraySort(void* ap) {
     printer(arr, 32);
     putFreeArray(mergeparams->array);
     free(mergeparams);
+    sem_post(&sorterFnMain);
     return;
 }
 
@@ -402,7 +396,7 @@ int main() {
     int p, to_cal[2], from_cal[2];
     if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
     if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
-    int run = 10;
+    int run = 8;
     p = fork();
     
     if (p == 0) {
@@ -410,10 +404,11 @@ int main() {
         int array_size, i, tmp, thread_count = m, read_success = 0;
         int *array;
         initArrays(a);
+        sem_init(&sorterFnMain, 0, 1);
 
         char fname[200];
         
-        while (run>=0) {
+        while (run>0) {
 
             array = getFreeArray();
             if (array != NULL) {
@@ -441,7 +436,7 @@ int main() {
                 para->r = newReq;
                 para->m = m;
                 para->d = d;
-
+                sem_wait(&sorterFnMain);
                 arraySort_HL(para);
                 // printf("\nReturned without waiting in HL\n");
                 // putFreeArray(array);
@@ -462,7 +457,7 @@ int main() {
         int* arr;
         int i, read_status = -1;
 
-        while (run>=0) {
+        while (run>0) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
         
