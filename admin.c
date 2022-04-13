@@ -94,6 +94,7 @@ void initArrays(int a) {
         arrayList[i] = (struct workarrays*) malloc(sizeof(struct workarrays));
         arrayList[i]->workArray = (int*)malloc(1024*sizeof(int));
         arrayList[i]->free = 1;
+        printf("INIT %p @ %d\n", arrayList[i]->workArray, i);
         sem_init(&(arrayList[i]->arraySemph), 0, 1);
         for (j = 0; j < 8; j++) {
             sem_init(&(arrayList[i]->threadSemph[j]), 0, 1);
@@ -143,12 +144,15 @@ void *sorter(void* inputptr) {
     
     while (1) {
         struct args* argin = (struct args*) inputptr;
+        // printf("%p %p \n\n\n", argin, inputptr);
         sem_wait(&mpS[argin->thid]);
         if (argin->array == NULL) {
             sem_post(&mpS[argin->thid]);
+            // printf("thid %d, inside if \n", argin->thid);
         }
         else {
             int bef = -5, aft = -1;
+            // printf("thid %d, inside else array %p\n", argin->thid, argin->array);
             sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
             
             sem_getvalue(threadSp, &bef);
@@ -175,7 +179,8 @@ void *sorter(void* inputptr) {
                     array[min] = tmp;
                 }
             }
-            
+            argin->array = NULL;
+
             sem_post(threadSp);
             sem_post(&mpS[argin->thid]);
         }
@@ -331,7 +336,7 @@ void *arraySort(void* ap) {
     // sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
 
-    sleep(4);
+    sleep(3);
     // printf("\nCreated Thread from AS\n");
 
     int inc = 0;
@@ -343,11 +348,11 @@ void *arraySort(void* ap) {
     // printer(secsorted, 8);
     for ( i = 0; i < thread_count; i++ ){
         
-        printf("About to request...\n");
+        // printf("About to request...\n");
         if (initialINT < 0) {
-            printf("...[ I N ]...\n");
+            // printf("...[ I N ]...\n");
             sem_wait(&mpS[i]);
-            printf("Requesting sem in params now \n\n!");
+            // printf("Requesting sem in params now \n\n!");
         };
         mergeparams = mpA[i];
         mergeparams->array = arr;
@@ -358,21 +363,23 @@ void *arraySort(void* ap) {
         // mergeparams->mutx = &semarray[i];
         arrayofargs[i] = NULL;
         
-        pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
+        if (initialINT >= 0) {
+            pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
+        }
         
         int sval;
         sem_getvalue(&mpS[i], &sval);
-        printf("Signalling mpS %d .... ",  sval);
+        // printf("Signalling mpS %d .... ",  sval);
         sem_post(&mpS[i]);
         sem_getvalue(&mpS[i], &sval);
-        printf(" Done %d \n", sval);
+        // printf(" Done %d \n", sval);
         
         inc += (mergeparams->array_size);
     }
     initialINT -= 1;
     
     for (i = 0; i < thread_count; i++) {
-        pthread_join(threads[i], NULL);
+        // pthread_join(threads[i], NULL);
     }
     
     pthread_t threads_merge[4];
