@@ -116,58 +116,37 @@ void putFreeArray(int* arr) {
 }
 
 void *sorter(void* inputptr) {
-    // while (inputptr!=NULL) {
-    // printf("Thread %d, inputptr %p\n", );
-    // while (inputptr == NULL) {
-    //     // do nothing
-    // }
-        // printf("\n\ncame out of loop\n\n");
-        struct args* argin = (struct args*) inputptr;
-        int bef = -5, aft = -1; 
+    
+    struct args* argin = (struct args*) inputptr;
+    int bef = -5, aft = -1; 
+    sem_getvalue(argin->semph, &bef);
+    sem_getvalue(argin->semph, &aft);
 
-        sem_getvalue(argin->semph, &bef);
-        // sem_wait(argin->semph);
-        sem_getvalue(argin->semph, &aft);
-
-        // while (inputptr != NULL) 
-
-        
-        // if ((aft = pthread_mutex_trylock(argin->mutx)) == 0) {
-            // printf("Thread %d, before: %d after %d for array %p\n", (argin->array_offset)/4, bef, aft, argin->array);
-            // pid_t x = syscall(__NR_gettid);
-            // printf("\n[INDEX: %d] [THREAD ID: %lu]\n", (argin->array_offset)/4, (long unsigned int)pthread_self());
-            int i, j, tmp, min; int n = argin->array_size;
-            int* array = (int*) ((argin->array) + argin->array_offset);
-            for (i=0; i<n-1; i++) {
-                min = i;
-                for (j=i+1; j<n; j++) {
-                    if (array[j] < array[min]) {
-                        min = j;
-                    }
-                }
-                if (min!=i) {
-                    tmp = array[i];
-                    array[i] = array[min];
-                    array[min] = tmp;
-                }
+    int i, j, tmp, min; int n = argin->array_size;
+    int* array = (int*) ((argin->array) + argin->array_offset);
+    for (i=0; i<n-1; i++) {
+        min = i;
+        for (j=i+1; j<n; j++) {
+            if (array[j] < array[min]) {
+                min = j;
             }
-            // int* st = (argin->sortstatus);
-            // *(st) = 1;
-            // free(inputptr);
-            // pthread_mutex_unlock(argin->mutx);
-            // sem_post(argin->semph);
-            // free(inputptr);
-        // }
-    // }
+        }
+        if (min!=i) {
+            tmp = array[i];
+            array[i] = array[min];
+            array[min] = tmp;
+        }
+    }
+           
 }
 
 void *merger(void* inputptr) {
-    // while (inputptr == NULL) {}
+
     struct args* argin = (struct args*) inputptr;
     int* array = (int*) ((argin->array) + argin->array_offset); int debug = 0;
-    // if (array[0] != 16) return;
+    
     int sz = argin->array_size;
-    // printf("sz: %d\n", sz);
+    
     int i = (sz/2)-1, j = i, n = sz, tmp;
     int ii = 0, jj = sz/2; int k;
     while (i >= 0 && j >= 0) {
