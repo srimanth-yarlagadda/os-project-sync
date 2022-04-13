@@ -17,6 +17,8 @@
 #define createthreads 16 // 8+4+2+1+1
 #define max_array_size 1024
 
+#define masterDebug 0
+
 void arraySort_HL(void* ap);
 
 struct request {
@@ -30,7 +32,9 @@ struct workarrays {
     int* workArray;
     int free;
     sem_t arraySemph;
+    sem_t threadSemph[8];
 };
+
 
 struct args {
     int* array;
@@ -79,16 +83,19 @@ struct request* getReq() {
 
 struct workarrays* arrayList[5];
 void initArrays(int a) {
-    int i = 0;
+    int i = 0, j;
     for (i=0;i<a;i++) {
         arrayList[i] = (struct workarrays*) malloc(sizeof(struct workarrays));
         arrayList[i]->workArray = (int*)malloc(1024*sizeof(int));
         arrayList[i]->free = 1;
         sem_init(&(arrayList[i]->arraySemph), 0, 1);
+        for (j = 0; j < 8; j++) {
+            sem_init(&(arrayList[i]->threadSemph[j]), 0, 1);
+        }
     }
 }
 int* getFreeArray() {
-    int i, slock_before, slock_after;
+    int i, slock_before, slock_after, j;
     for (i=0;i<5;i++) {
         if (arrayList[i]->free==1) {
             printf("Trying...%d...", i);
@@ -115,12 +122,31 @@ void putFreeArray(int* arr) {
     return;
 }
 
+sem_t* getThreadSemph(int* array, int offset) {
+    int i, j;
+    for (i=0;i<5;i++) {
+        if (arrayList[i]->workArray==array) {
+            for (j = 0; j < 8; j++) {
+                return &(arrayList[i]->threadSemph[offset]);
+            }
+        }
+    }
+}
+
 void *sorter(void* inputptr) {
     
     struct args* argin = (struct args*) inputptr;
-    int bef = -5, aft = -1; 
-    sem_getvalue(argin->semph, &bef);
-    sem_getvalue(argin->semph, &aft);
+    // sem_wait(argin->threadSemph[(argin->array_offset)/4]);
+    int bef = -5, aft = -1;
+    sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
+    sem_getvalue(threadSp, &bef);
+    sem_wait(threadSp);
+    sem_getvalue(threadSp, &aft);
+    
+    if (masterDebug) {
+        printf("Thread [%d] %lu before %d after %d for semaphore %p\n", 
+        (argin->array_offset)/4, (long unsigned int)pthread_self(), bef, aft, threadSp);
+    }
 
     int i, j, tmp, min; int n = argin->array_size;
     int* array = (int*) ((argin->array) + argin->array_offset);
@@ -137,6 +163,8 @@ void *sorter(void* inputptr) {
             array[min] = tmp;
         }
     }
+    sem_post(threadSp);
+    // sem_post(argin->threadSemph[(argin->array_offset)/4]);
            
 }
 
@@ -267,20 +295,21 @@ void *arraySort(void* ap) {
     struct args *mergeparams;
     int* arr = newrequest->input_array;
     int sort_segment = newrequest->input_length / m;
-    sem_t semarray[createthreads]; 
+    
+    // sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
 
     sleep(4);
     printf("\nCreated Thread from AS\n");
     // pthread_mutex_t semarray[createthreads];
     
-    for ( i=0; i< createthreads; i++) {
-        initstatus = sem_init(&semarray[i], 0, 1);
-        sem_getvalue(&semarray[i], &semret);
-        // initstatus = pthread_mutex_init(&semarray[i], NULL);
-        // (&semarray[i]) = PTHREAD_MUTEX_INITIALIZER;
-        // printf("Semaphore %d init'ed with status %d and value %d\n", i, initstatus, semret);
-    }
+    // for ( i=0; i< createthreads; i++) {
+    //     initstatus = sem_init(&semarray[i], 0, 1);
+    //     sem_getvalue(&semarray[i], &semret);
+    //     // initstatus = pthread_mutex_init(&semarray[i], NULL);
+    //     // (&semarray[i]) = PTHREAD_MUTEX_INITIALIZER;
+    //     // printf("Semaphore %d init'ed with status %d and value %d\n", i, initstatus, semret);
+    // }
 
     int inc = 0;
     struct args* arrayofargs[thread_count];
@@ -296,7 +325,7 @@ void *arraySort(void* ap) {
         mergeparams->array = arr;
         mergeparams->array_offset = inc;
         mergeparams->array_size = sort_segment;
-        mergeparams->semph = &semarray[i];
+        // mergeparams->semph = &semarray[i];
         mergeparams->sortstatus = &(secsorted[i]);
         // mergeparams->mutx = &semarray[i];
         arrayofargs[i] = NULL;
@@ -359,7 +388,7 @@ void *arraySort(void* ap) {
 
 
 int main() {
-    system("clear");
+    // system("clear");
     int m=8,a=5,q=5,d=0;
     // printf("Enter number of parallel threads: \n");
     // scanf("%d",&m);
@@ -373,7 +402,7 @@ int main() {
     int p, to_cal[2], from_cal[2];
     if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
     if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
-
+    int run = 10;
     p = fork();
     
     if (p == 0) {
@@ -383,7 +412,7 @@ int main() {
         initArrays(a);
 
         char fname[200];
-        int run = 8;
+        
         while (run>=0) {
 
             array = getFreeArray();
@@ -401,7 +430,7 @@ int main() {
                     write(from_cal[1], &read_success, sizeof(read_success));
                 }
                 
-                printer(array, 32);
+                printf("RECD:\n"); printer(array, 32);
 
                 struct request* newReq = (struct request*) malloc(sizeof(struct request));
                 newReq->filename = fname;
@@ -432,7 +461,7 @@ int main() {
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
-        int run = 8;
+
         while (run>=0) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
