@@ -10,7 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-// #inlcude <definitions.h>
+#include "definitions.h"
 
 #define max_string_size 512
 #define mext 13
@@ -19,37 +19,9 @@
 
 #define masterDebug 0
 
-void arraySort_HL(void* ap);
-
-sem_t sorterFnMain;
-
-struct request {
-    char* filename;
-    int* input_array;
-    int input_length;
-    struct request* next;
-};
-
-struct workarrays {
-    int* workArray;
-    int free;
-    sem_t arraySemph;
-    sem_t threadSemph[8];
-};
 
 
-struct args* mpA[8];
-sem_t        mpS[8];
 
-struct args {
-    int* array;
-    int array_offset;
-    int array_size;
-    sem_t* semph;
-    int* sortstatus;
-    int thid;
-    // pthread_mutex_t *mutx;
-};
 
 void printer(int* array, int n) {
     int i, j=4;

@@ -8,8 +8,7 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 
-
-void *arraySort(void* ap);
+#include "definitions.h"
 
 void arraySort_HL(void* ap) {
     pthread_t th;
