@@ -1,10 +1,14 @@
+#define nthreadsTotal 16
+
 void arraySort_HL(void* ap);
 void *arraySort(void* ap);
 
 sem_t sorterFnMain;
 
-struct args* mpA[8];
-sem_t        mpS[8];
+struct args* mpA[nthreadsTotal];
+sem_t        mpS[nthreadsTotal];
+int          mergeStatus[4];
+pthread_cond_t condWait[4]; 
 
 struct request {
     char* filename;
@@ -18,6 +22,7 @@ struct workarrays {
     int free;
     sem_t arraySemph;
     sem_t threadSemph[8];
+    // sem_t 
 };
 
 struct args {
@@ -25,6 +30,5 @@ struct args {
     int array_offset;
     int array_size;
     sem_t* semph;
-    int* sortstatus;
     int thid;
 };

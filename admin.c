@@ -15,13 +15,12 @@
 #define max_string_size 512
 #define mext 13
 #define createthreads 16 // 8+4+2+1+1
+#define nthreadsTotal 16
 #define max_array_size 1024
 
 #define masterDebug 0
 
-
-
-
+int l0_thread_count = 8;
 
 void printer(int* array, int n) {
     int i, j=4;
@@ -70,7 +69,12 @@ void initArrays(int a) {
         sem_init(&(arrayList[i]->arraySemph), 0, 1);
         for (j = 0; j < 8; j++) {
             sem_init(&(arrayList[i]->threadSemph[j]), 0, 1);
+            sem_wait(&(arrayList[i]->threadSemph[j]));
         }
+        // arrayList[i]->mergeStatus = (int*)malloc(4*sizeof(int));
+        // for (j = 0; j < 4; j++) {
+        //     arrayList[i]->mergeStatus[i] = 2;
+        // }
     }
 }
 int* getFreeArray() {
@@ -128,7 +132,7 @@ void *sorter(void* inputptr) {
             sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
             
             sem_getvalue(threadSp, &bef);
-            sem_wait(threadSp);
+            // sem_wait(threadSp);
             sem_getvalue(threadSp, &aft);
         
             if (masterDebug) {
@@ -151,48 +155,70 @@ void *sorter(void* inputptr) {
                     array[min] = tmp;
                 }
             }
-            argin->array = NULL;
 
+            if ((argin->thid)%2 == 1) {/*do nothing*/}
+            else {
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->array = (argin->array);
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2*(argin->thid)/2;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->thid = (argin->thid)/2;
+                sem_post(&mpS[(l0_thread_count) + ((argin->thid)/2)]);
+            }
+
+            argin->array = NULL;
             sem_post(threadSp);
             sem_post(&mpS[argin->thid]);
         }
     }
-           
 }
 
 
 
 void *merger(void* inputptr) {
 
-    struct args* argin = (struct args*) inputptr;
-    int* array = (int*) ((argin->array) + argin->array_offset); int debug = 0;
-    
-    int sz = argin->array_size;
-    
-    int i = (sz/2)-1, j = i, n = sz, tmp;
-    int ii = 0, jj = sz/2; int k;
-    while (i >= 0 && j >= 0) {
-        if (array[ii] <= array[jj]) {
-            ii++;
-            i--;
+    while (1) {
+        struct args* argin = (struct args*) inputptr;
+        sem_wait(&mpS[argin->thid]);
+        if (argin->array == NULL) {
+            sem_post(&mpS[argin->thid]);
         }
         else {
-            tmp = array[jj];
-            for (k = jj; k>ii; k--) {
-                array[k] = array[k-1];
+            int* array = (int*) ((argin->array) + argin->array_offset);
+            int debug = 0;
+            int sz = argin->array_size;
+
+            sem_t* threadSp1 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 0);
+            sem_t* threadSp2 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 1);
+            sem_wait(threadSp1); sem_wait(threadSp2);
+            
+            int i = (sz/2)-1, j = i, n = sz, tmp;
+            int ii = 0, jj = sz/2; int k;
+            while (i >= 0 && j >= 0) {
+                if (array[ii] <= array[jj]) {
+                    ii++;
+                    i--;
+                }
+                else {
+                    tmp = array[jj];
+                    for (k = jj; k>ii; k--) {
+                        array[k] = array[k-1];
+                    }
+                    array[ii] = tmp;
+                    jj++; ii++;
+                    j--;
+                }
+                if (debug) {
+                    printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
+                    printf("Debug:\n");
+                    printer(array, sz);
+                    printf("ii is %d, jj is %d, [i,j]: %d %d\n\n", ii, jj, i, j);
+                }
             }
-            array[ii] = tmp;
-            jj++; ii++;
-            j--;
-        }
-        if (debug) {
-            printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
-            printf("Debug:\n");
-            printer(array, sz);
-            printf("ii is %d, jj is %d, [i,j]: %d %d\n\n", ii, jj, i, j);
+            argin->array = NULL;
+            sem_post(threadSp1); sem_post(threadSp2);
+            sem_post(&mpS[argin->thid]);
         }
     }
-
 }
 
 int createServer() {
@@ -264,7 +290,6 @@ struct request* receive(int soc) {
     return req;
 }
 
-
 void finalMerge(int* arr) {
     struct args* mergeparams = (struct args*) malloc(sizeof(struct args));
     mergeparams->array = arr;
@@ -282,12 +307,16 @@ struct arraysortparams {
 void initMPA() {
     int i;
     struct args *mergeparams;
-    for ( i = 0; i < 8; i++ ){
+    for ( i = 0; i < nthreadsTotal; i++) {
         mergeparams = (struct args*) malloc(sizeof(struct args));
         mergeparams->thid = i;
         sem_init(&mpS[i], 0, 1);
         sem_wait(&mpS[i]);
         mpA[i] = mergeparams;
+    }
+    for ( i = 0; i < 4; i++) {
+        mergeStatus[i] = 2;
+        pthread_cond_init(&condWait[i], NULL);
     }
     return;
 }
@@ -300,7 +329,7 @@ void *arraySort(void* ap) {
     int d = params->d;
     struct request* newrequest = params->r;
     int i, thread_count = m;
-    pthread_t threads[thread_count];
+    pthread_t threads[nthreadsTotal];
     struct args *mergeparams;
     int* arr = newrequest->input_array;
     int sort_segment = newrequest->input_length / m;
@@ -313,10 +342,10 @@ void *arraySort(void* ap) {
 
     int inc = 0;
     struct args* arrayofargs[thread_count];
-    int secsorted[thread_count];
-    for ( i = 0; i < thread_count; i++ ){
-        secsorted[i] = 0;
-    }
+    // int secsorted[thread_count];
+    // for ( i = 0; i < thread_count; i++ ){
+    //     secsorted[i] = 0;
+    // }
     // printer(secsorted, 8);
     for ( i = 0; i < thread_count; i++ ){
         
@@ -331,7 +360,7 @@ void *arraySort(void* ap) {
         mergeparams->array_offset = inc;
         mergeparams->array_size = sort_segment;
         // mergeparams->semph = &semarray[i];
-        mergeparams->sortstatus = &(secsorted[i]);
+        // mergeparams->sortstatus = &(secsorted[i]);
         // mergeparams->mutx = &semarray[i];
         arrayofargs[i] = NULL;
         
@@ -348,30 +377,34 @@ void *arraySort(void* ap) {
         
         inc += (mergeparams->array_size);
     }
-    initialINT -= 1;
-    
     for (i = 0; i < thread_count; i++) {
         // pthread_join(threads[i], NULL);
     }
     
-    pthread_t threads_merge[4];
-    inc = 0;
-    for ( i = 0; i < 4; i++ ){
-        intptr_t* ptr = malloc(sizeof(intptr_t));
-        *ptr = i;
-        mergeparams = (struct args*) malloc(sizeof(struct args));
-        mergeparams->array = arr;
-        mergeparams->array_offset = inc;
-        mergeparams->array_size = 2*sort_segment;
-        
-        pthread_create(&threads_merge[i], NULL, &merger, (void*)mergeparams);
-        inc += 8;
-    }
-    for (i = 0; i < 4; i++) {
-        pthread_join(threads_merge[i], NULL);
-    }
-    // printer(arr, 32);
     
+    
+    inc = 0;
+    for ( i = thread_count; i < thread_count+4; i++ ){
+        // intptr_t* ptr = malloc(sizeof(intptr_t));
+        // *ptr = i;
+        // mergeparams = (struct args*) malloc(sizeof(struct args));
+        // mergeparams->array = arr;
+        // mergeparams->array_offset = inc;
+        // mergeparams->array_size = 2*sort_segment;
+        mergeparams = mpA[i];
+        if (initialINT >= 0) {
+            pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
+        }
+        // inc += 8;
+    }
+    initialINT -= 1;
+    for (i = 0; i < 4; i++) {
+        // pthread_join(threads_merge[i], NULL);
+    }
+    // printf("Final: \n");
+    printer(arr, 32);
+    
+    /* WIP TO BE DEVELOPED / MODIFIED */ /*
     pthread_t threads_merge_two[2];
     inc = 0;
     for ( i = 0; i < 2; i++ ){
@@ -395,9 +428,10 @@ void *arraySort(void* ap) {
     mergeparams->array_size = 8*sort_segment;
     merger(mergeparams);
     printf("Final: \n");
-    printer(arr, 32);
+    // printer(arr, 32);
     putFreeArray(mergeparams->array);
     free(mergeparams);
+    */
     sem_post(&sorterFnMain);
     return;
 }
