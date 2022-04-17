@@ -112,6 +112,7 @@ void main() {
         sleep(1);
         run--;
         scanfilename[0] += 1;
+        // break;
 
         request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);

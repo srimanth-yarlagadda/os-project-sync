@@ -7,8 +7,10 @@ sem_t sorterFnMain;
 
 struct args* mpA[nthreadsTotal];
 sem_t        mpS[nthreadsTotal];
+sem_t        mpStest[8];
 int          mergeStatus[4];
-pthread_cond_t condWait[4]; 
+pthread_cond_t condWait[4];
+pthread_mutex_t mergeStatusMutex[4];
 
 struct request {
     char* filename;
