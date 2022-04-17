@@ -43,7 +43,7 @@ void testprinter(int* array, int n) {
     // sem_wait(&mpStest[4]);
     // sem_wait(&mpStest[5]);
     // sem_wait(&mpStest[6]);
-    sem_wait(&mpStest[7]);
+    // sem_wait(&mpStest[7]);
     printf("\n\nPrinting off test printer\n\n");
     int i, j=4;
     printf("[");
@@ -151,7 +151,7 @@ void *sorter(void* inputptr) {
             // printf("thid %d, inside if \n", argin->thid);
         }
         else {
-            printf("Else sorter called\n");
+            // printf("Else sorter called\n");
             int bef = -5, aft = -1;
             // printf("thid %d, inside else array %p\n", argin->thid, argin->array);
             sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
@@ -193,7 +193,7 @@ void *sorter(void* inputptr) {
             argin->array = NULL;
             sem_post(threadSp);
             sem_post(&mpS[argin->thid]);
-            // break;
+            break;
         }
     }
 }
@@ -201,8 +201,8 @@ void *sorter(void* inputptr) {
 
 
 void *merger(void* inputptr) {
-    printf("MERGER CALLED\n");
-    sleep(3);
+    // printf("MERGER CALLED\n");
+    // sleep(3);
     while (1) {
         struct args* argin = (struct args*) inputptr;
         sem_wait(&mpS[argin->thid]);
@@ -361,122 +361,31 @@ void *arraySort(void* ap) {
     int d = params->d;
     struct request* newrequest = params->r;
     int i, thread_count = m;
-   
+    
+    sleep(3);
     struct args *mergeparams;
     int* arr = newrequest->input_array;
     int sort_segment = newrequest->input_length / m;
     
-    // sem_t semarray[createthreads]; 
     int initstatus, semret = -5;
 
-    sleep(3);
-    // printf("\nCreated Thread from AS\n");
-
-    int inc = 0;
-    struct args* arrayofargs[thread_count];
-    // int secsorted[thread_count];
-    // for ( i = 0; i < thread_count; i++ ){
-    //     secsorted[i] = 0;
-    // }
-    // printer(secsorted, 8);
+    int inc = 0;    
     for ( i = 0; i < 8; i++ ){
-        
-        // printf("About to request...\n");
-        // if (initialINT < 0) {
-        //     // printf("...[ I N ]...\n");
-        //     sem_wait(&mpS[i]);
-        //     // printf("Requesting sem in params now \n\n!");
-        // };
         mergeparams = mpA[i];
         mergeparams->array = arr;
         mergeparams->array_offset = inc;
         mergeparams->array_size = sort_segment;
-        // mergeparams->semph = &semarray[i];
-        // mergeparams->sortstatus = &(secsorted[i]);
-        // mergeparams->mutx = &semarray[i];
-
-        
-        // if (initialINT >= 0) {
-        //     if (i<8) {
-        //         // printf("creating thread\n");
-        //         pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams);
-        //         }
-        // }
-        // if (initialINT >= 0) {
-        //     if (i>=8) {pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);}
-        // }
-        
-        int sval;
-        sem_getvalue(&mpS[i], &sval);
-        // printf("Signalling mpS %d .... ",  sval);
         sem_post(&mpS[i]);
-        sem_getvalue(&mpS[i], &sval);
-        // printf(" Done %d \n", sval);
-        
         inc += (mergeparams->array_size);
     }
-    for (i = 0; i < 4; i++) {
-    }
-    for (i = 0; i < 8; i++) {
-        // pthread_join(threads[i], NULL);
-        printf("Join success %d\n",i);
-    }
-    
-    
-    
-    inc = 0;
-    // for ( i = thread_count; i < thread_count+4; i++ ){
-        // intptr_t* ptr = malloc(sizeof(intptr_t));
-        // *ptr = i;
-        // mergeparams = (struct args*) malloc(sizeof(struct args));
-        // mergeparams->array = arr;
-        // mergeparams->array_offset = inc;
-        // mergeparams->array_size = 2*sort_segment;
-        // mergeparams = mpA[i];
-        // if (initialINT >= 0) {
-        //     pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
-        // }
-        // inc += 8;
-    // }
     initialINT -= 1;
+    
     for (i = 0; i < 4; i++) {
         // pthread_join(threads_merge[i], NULL);
     }
-    // printf("Final: \n");
-    printer(arr, 32);
-    testprinter(arr, 32);
-    for (i = 0; i < thread_count; i++) {
-        // pthread_join(threads[i], NULL);
-    }
-    
-    /* WIP TO BE DEVELOPED / MODIFIED */ /*
-    pthread_t threads_merge_two[2];
-    inc = 0;
-    for ( i = 0; i < 2; i++ ){
-        intptr_t* ptr = malloc(sizeof(intptr_t));
-        *ptr = i;
-        mergeparams = (struct args*) malloc(sizeof(struct args));
-        mergeparams->array = arr;
-        mergeparams->array_offset = inc;
-        mergeparams->array_size = 4*sort_segment;
-        pthread_create(&threads_merge_two[i], NULL, &merger, (void*)mergeparams);
-        inc += 16;
-    }
-    // for (i = 0; i < 2; i++) {
-    //     pthread_join(threads_merge_two[i], NULL);
-    // }
-    // printer(arr, 32);
-    mergeparams = (struct args*) malloc(sizeof(struct args));
-    mergeparams->array = arr;
-    mergeparams->array_offset = 0;
-    mergeparams->array_size = 8*sort_segment;
-    merger(mergeparams);
     printf("Final: \n");
-    // printer(arr, 32);
-    putFreeArray(mergeparams->array);
-    free(mergeparams);
-    */
-    // sem_post(&sorterFnMain);
+    printer(arr, 32);
+    // testprinter(arr, 32);
     return;
 }
 
@@ -493,7 +402,7 @@ void initThreads() {
     for (i = 8; i < 12; i++) {
         mergeparams = mpA[i];
         pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
-
+        pthread_detach(threads[i]);
     }
 }
 
@@ -528,8 +437,6 @@ int main() {
         
         while (run>0) {
 
-            
-
             array = getFreeArray();
             if (array != NULL) {
             
@@ -561,7 +468,6 @@ int main() {
                 // printf("\nReturned without waiting in HL\n");
                 // putFreeArray(array);
                 free(newReq);
-                // system("./cal.exe teststring 32");
                 run--;
             }
             else {
