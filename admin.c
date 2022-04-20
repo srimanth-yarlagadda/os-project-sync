@@ -172,7 +172,7 @@ sem_t* getThreadSemph(int* array, int offset) {
 }
 
 void *sorter(void* inputptr) {
-    printf("sorter called\n");
+    // printf("sorter called\n");
     // printf("Thread %lu created %d\n", (long unsigned int)pthread_self(), (int)pthread_self());
     
     while (1) {
@@ -180,8 +180,6 @@ void *sorter(void* inputptr) {
         // printf("%p %p \n\n\n", argin, inputptr);
         sem_wait(&mpS[argin->thid]);
         if (argin->array == NULL) {
-            // printf("IF sorter called\n");
-            // printf(".");
             sem_post(&mpS[argin->thid]);
         }
         else {
@@ -190,9 +188,9 @@ void *sorter(void* inputptr) {
             // printf("thid %d, inside else array %p\n", argin->thid, argin->array);
             sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
             
-            sem_getvalue(threadSp, &bef);
-            sem_wait(threadSp);
-            sem_getvalue(threadSp, &aft);
+            // sem_getvalue(threadSp, &bef);
+            // sem_wait(threadSp);
+            // sem_getvalue(threadSp, &aft);
         
             if (masterDebug) {
                 printf("Thread [%d] %lu before %d after %d for semaphore %p\n", 
@@ -200,7 +198,10 @@ void *sorter(void* inputptr) {
             }
 
             int i, j, tmp, min; int n = argin->array_size;
-            int* array = (int*) ((argin->array) + argin->array_offset);
+            int* array = (int*) ((argin->array));
+            
+            // printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
+            
             for (i=0; i<n-1; i++) {
                 min = i;
                 for (j=i+1; j<n; j++) {
@@ -220,11 +221,13 @@ void *sorter(void* inputptr) {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array = (argin->array);
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2*(argin->thid)/2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
-                sem_post(&mpS[(l0_thread_count) + ((argin->thid)/2)]);
+                printf("SIG %d from %d - ar %p, offset %d, size %d\n", 
+                    (l0_thread_count) + ((argin->thid)/2), argin->thid, argin->array, (argin->array_size)*2*(argin->thid)/2, (argin->array_size)*2 );
+                sem_post(&mpS[ (l0_thread_count) + ((argin->thid)/2)]);
             }
             sem_post(&mpStest[argin->thid]);
             argin->array = NULL;
-            sem_post(threadSp);
+            // sem_post(threadSp);
             sem_post(&mpS[argin->thid]);
         }
     }
@@ -245,15 +248,15 @@ void *merger(void* inputptr) {
             sem_post(&mpS[argin->thid]);
         }
         else {
-            int* array = (int*) ((argin->array) + argin->array_offset);
+            int* array = (int*) ((argin->array));
             int debug = 0;
             int sz = argin->array_size;
             // printf("iN else mereger\n");
 
             sem_t* threadSp1 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 0);
             sem_t* threadSp2 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 1);
-            sem_wait(threadSp1); sem_wait(threadSp2);
-            
+            // sem_wait(threadSp1); sem_wait(threadSp2);
+            printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
             int i = (sz/2)-1, j = i, n = sz, tmp;
             int ii = 0, jj = sz/2; int k;
             while (i >= 0 && j >= 0) {
@@ -297,7 +300,7 @@ void *merger(void* inputptr) {
             }
             argin->array = NULL;
             
-            sem_post(threadSp1); sem_post(threadSp2);
+            // sem_post(threadSp1); sem_post(threadSp2);
             sem_post(&mpS[argin->thid]);
             
             // pthread_mutex_unlock(&printMutex);
@@ -441,25 +444,28 @@ void *arraySort(void* ap) {
 int tar[12];
 
 void initThreads() {
-    int i;
+    int i,r;
     struct args* mergeparams;
     for (i = 0; i < 8; i++) {
         mergeparams = mpA[i];
-        pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams); 
-        pthread_detach(threads[i]);
+        r = pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams); 
+        if (r!=0) printf("ERROR IN THREAD CREATION %d !\n", r);
     }
     for (i = 8; i < 12; i++) {
         mergeparams = mpA[i];
-        pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
+        r = pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
+        if (r!=0) printf("ERROR IN THREAD CREATION %d !\n", r);
+    }
+    for (i = 0; i < 12; i++) {
         pthread_detach(threads[i]);
     }
     for (i = 12; i < 14; i++) {
-        mergeparams = mpA[i];
-        pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
-        if (detachThreads) pthread_detach(threads[i]);
+        // mergeparams = mpA[i];
+        // pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
+        // if (detachThreads) pthread_detach(threads[i]);
     }
-        pthread_create(&threads[14], NULL, &merger, (void*)mergeparams);
-        if (detachThreads) pthread_detach(threads[14]);
+    // pthread_create(&threads[14], NULL, &merger, (void*)mergeparams);
+    // if (detachThreads) pthread_detach(threads[14]);
 
         // pthread_create(&threads[15], NULL, &threadPrinter, (void*)mergeparams);
         // if (detachThreads) pthread_detach(threads[15]);
@@ -498,6 +504,8 @@ int main() {
         initMPA();
         initThreads();
 
+        struct args* mergeparams;
+
         char fname[200];
         
         while (run>0) {
@@ -529,17 +537,27 @@ int main() {
                 para->r = newReq;
                 para->m = m;
                 para->d = d;
-                sem_wait(&sorterFnMain);
-                arraySort_HL(para);
+                // sem_wait(&sorterFnMain);
+                
+                // arraySort_HL(para);
 
 
-                // sleep(12);
-                printf("acquire lock....");
-                // sem_wait(&printSignal);
-                // pthread_mutex_lock(&printMutex);
-                printf("done\n");
+                int inc = 0;    
+                int i;
+                for ( i = 0; i < 8; i++ ){
+                    mergeparams = mpA[i];
+                    mergeparams->array_offset = inc;
+                    mergeparams->array_size = 4;
+                    mergeparams->array = array + inc;
+                    // printf("Semp ptr %p\n", &mpS[i]);
+                    sem_post(&mpS[i]);
+                    inc += 4;
+                }
+
+
+    
                 printf("Printing after signal:\n");
-                sleep(12);
+                sleep(20);
                 printer(array, 32);
                 // printf("\nReturned without waiting in HL\n");
                 // putFreeArray(array);
@@ -558,6 +576,11 @@ int main() {
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
+
+        // int* testar = (int*) malloc(12*sizeof(int));
+        // printf("%p %p\n", testar, testar+4);
+
+
         // snprintf(holdbuffer, sizeof(holdbuffer), "Hello ");
         // snprintf(holdbuffer, sizeof(holdbuffer), "World !!");
         while (run>0) {
