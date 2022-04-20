@@ -13,6 +13,7 @@
 void arraySort_HL(void* ap) {
     pthread_t th;
     pthread_create(&th, NULL, &arraySort, ap);
+    pthread_detach(th);
     // printf("Final: \n");
     // printf("Ending MASTER thread\n\n");
     // printer( (((struct args*)ap)->array), 32);

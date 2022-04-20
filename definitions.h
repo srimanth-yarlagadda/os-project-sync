@@ -4,6 +4,8 @@ void arraySort_HL(void* ap);
 void *arraySort(void* ap);
 
 sem_t sorterFnMain;
+sem_t printSignal;
+pthread_mutex_t printMutex;
 
 struct args* mpA[nthreadsTotal];
 sem_t        mpS[nthreadsTotal];
