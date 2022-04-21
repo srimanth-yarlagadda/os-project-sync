@@ -101,7 +101,6 @@ void *merger(void* inputptr) {
         struct args* argin = (struct args*) inputptr;
         // if (argin->thid==14) {
         //     printf("MERGER CALLED THID 4\n");
-        //     sleep(0.5);
         // }
         sem_wait(&mpS[argin->thid]);
         if (argin->array == NULL) {

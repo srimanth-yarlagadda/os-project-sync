@@ -100,34 +100,34 @@ void main() {
     int clientid, run = 12;
     char scanfilename[200] = "k";
     while(run > 0) {
-        // printf("Enter filename: ");
-        // scanf("%s", scanfilename);
+        printf("Enter filename: ");
+        scanf("%s", scanfilename);
         // scanfilename = "i";
         if (strcmp(scanfilename, "end") == 0) break;
-        if (strcmp(scanfilename, "restart") == 0) system("./client.exe");
         struct file_details* request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
-        sleep(1);
         run--;
-        break;
-        scanfilename[0] += 1;
-
-        request = read_request(scanfilename);
-        send_to_server(request->filename, request->input_array, request->input_length);
-        free(request);
-        run--;
-        scanfilename[0] += 1;
-        sleep(1);
-
-        request = read_request(scanfilename);
-        send_to_server(request->filename, request->input_array, request->input_length);
-        free(request);
-        run--;
-        scanfilename[0] -= 2;
-        sleep(1);
-        break;
+        memset(scanfilename, 0, 200);
     }
+
+    /*
+        request = read_request(scanfilename);
+        send_to_server(request->filename, request->input_array, request->input_length);
+        free(request);
+        run--;
+        scanfilename[0] -= 1;
+        sleep(1);
+
+        request = read_request(scanfilename);
+        send_to_server(request->filename, request->input_array, request->input_length);
+        free(request);
+        run--;
+        scanfilename[0] += 2;
+        sleep(1);
+        
+    }
+    */
     printf(" *** Ending Client *** \n");
     return;
 }

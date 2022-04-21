@@ -14,8 +14,11 @@
 
 int getReqID() { return numRequests++; }
 
+void ctrlc_handle() {
+    killval = 1;
+}
+
 void printer(int* array, int n) {
-    // sleep(3);
     int i, j=4;
     // pthread_mutex_lock(&printMutex);
     printf("[");
@@ -41,27 +44,28 @@ void *threadPrinter(void *printArgs) {
         sem_wait(&mpS[15]);
         if (argin->array == NULL) {
             sem_post(&mpS[15]);
-            // sleep(1.5);
         }
         else {
             int* arr = argin->array; int n = argin->array_size;
-            int i, j=4;
+            int i, jj = 4, j=jj;
             pthread_mutex_lock(&printMutex);
             printf("[RESULT %2d]: REQUEST NAME: %s REQUEST ID: %d\n[", argin->array_size_absolute,
             (argin->thisRequest)->filename, (argin->thisRequest)->reqID);
             fflush(stdout);
             for (i = 0; i < argin->array_size_absolute; i++) {
                 if (j==0) {
-                    printf("\b] ["); j = 4;
+                    printf("\b]\n["); j = jj;
                     fflush(stdout);
                 }
-                printf("%d ", arr[i]); 
+                printf("%6d ", arr[i]); 
                 fflush(stdout);
                 j--;
             }
             printf("\b]\n");
             fflush(stdout);
             pthread_mutex_unlock(&printMutex);
+            mpA[16]->array = argin->array;
+            sem_post(&mpS[16]);
             argin->array = NULL;
             sem_post(&mpS[15]);
         }
@@ -116,11 +120,11 @@ struct workarrays* getFreeArray() {
     for (i=0;i<5;i++) {
         if (arrayList[i]->free==1) {
             pthread_mutex_lock(&printMutex); 
-                printf("Trying...%d...", i);
+                // printf("Trying...%d...", i);
                 sem_wait(&(arrayList[i]->arraySemph));
                 arrayList[i]->free = 0;
                 struct workarrays* free_return = arrayList[i];
-                printf("Returning array %p @ %d !!\n", free_return->workArray, i); 
+                // printf("Returning array %p @ %d !!\n", free_return->workArray, i); 
             pthread_mutex_unlock(&printMutex);
             sem_wait(&(arrayList[i]->printSemaphore));
             return free_return;
@@ -144,6 +148,32 @@ void putFreeArray(int* arr) {
     return;
 }
 
+void *putFreeArrayThread(void* inputptr) {
+    while(1) {
+        int* arr = (int*) inputptr;
+        sem_wait(&mpS[16]);
+        if (arr == NULL) {
+            sem_post(&mpS[16]);
+        }
+        else {
+            int i;
+            for (i=0;i<5;i++) {
+                if (arrayList[i]->workArray == arr) {
+                    arrayList[i]->free = 1;
+                    sem_post(&(arrayList[i]->printSemaphore));
+                    sem_post(&(arrayList[i]->arraySemph));
+                    pthread_mutex_lock(&printMutex); 
+                        printf("Array %p @ %d put successful ON THREAD\n", arr, i);
+                    pthread_mutex_unlock(&printMutex);
+                }
+            }
+            arr = NULL;
+            sem_post(&mpS[16]);
+            if (forcesleep) sleep(3);
+        }
+    }
+}
+
 sem_t* getThreadSemph(int* array, int offset) {
     int i, j;
     for (i=0;i<5;i++) {
@@ -163,7 +193,6 @@ sem_t* getPrintSemaphore(int* array) {
         }
     }
 }
-
 
 
 int createServer() {
@@ -343,6 +372,11 @@ void initThreads() {
     r = pthread_create(&threads[15], NULL, &threadPrinter, (void*)mergeparams);
     if (r!=0) printf("ERROR IN THREAD [15] CREATION - %d !\n", r);
     pthread_detach(threads[15]);
+
+    mergeparams = mpA[16];
+    r = pthread_create(&threads[16], NULL, &putFreeArrayThread, (void*)mergeparams);
+    if (r!=0) printf("ERROR IN THREAD [16] CREATION - %d !\n", r);
+    pthread_detach(threads[15]);
     return;
 }
 
@@ -436,13 +470,13 @@ int main() {
                 }
 
 
-                sem_wait(getPrintSemaphore(array));    
+                sem_wait(getPrintSemaphore(array));
                 // printf("Printing Result of Request %s:\n", newReq->filename);
-                // sleep(20);
+
                 // printer(array, 32);
             
-                putFreeArray(array);
-                free(newReq);
+                // putFreeArray(array);
+                // free(newReq);
                 clearMergeParams();
                 memset(fname, 0, 200);
                 run--;
@@ -460,8 +494,11 @@ int main() {
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
+        killval = 0;
 
-        while (run>0) {
+        // signal(SIGINT, ctrlc_handle);
+
+        while (run>0 && (killval != 1)) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
             // printer(arr,32);
@@ -482,8 +519,7 @@ int main() {
             free(arr);
             run--;
         }
-        // printf("%s", holdbuffer);
-        // sleep(20);
+
         kill(p, SIGKILL);
         close(socket);
 
