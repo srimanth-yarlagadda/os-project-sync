@@ -170,6 +170,15 @@ sem_t* getThreadSemph(int* array, int offset) {
     }
 }
 
+sem_t* getPrintSemaphore(int* array) {
+    int i;
+    for (i=0;i<5;i++) {
+        if (arrayList[i]->workArray==array) {
+            return &(arrayList[i]->printSemaphore);
+        }
+    }
+}
+
 void *sorter(void* inputptr) {
     // printf("sorter called\n");
     // printf("Thread %lu created %d\n", (long unsigned int)pthread_self(), (int)pthread_self());
@@ -328,7 +337,10 @@ void *merger(void* inputptr) {
                 mergeStatus[ base+it  ] = mergeStatus[ base+it  ] + 1;
                 sem_post(&mStatS[ base+it  ]);
             }
-            if (argin->thid == 14) {/*Give Print Signal*/}
+            if (argin->thid == 14) {
+                /*Give Print Signal*/
+                sem_post(getPrintSemaphore(argin->array));
+            }
             if ((argin->thid)%2 == 1) {/*do nothing*/}
             // else if ( argin->thid == 12 ) {
             //     mpA[14]->array = (argin->array);
@@ -621,9 +633,9 @@ int main() {
                 }
 
 
-    
+                sem_wait(getPrintSemaphore(array));    
                 printf("Printing after signal:\n");
-                sleep(20);
+                // sleep(20);
                 printer(array, 32);
                 // printf("\nReturned without waiting in HL\n");
                 // putFreeArray(array);
