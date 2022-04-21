@@ -126,10 +126,7 @@ void initArrays(int a) {
             sem_init(&(arrayList[i]->threadSemph[j]), 0, 1);
             sem_wait(&(arrayList[i]->threadSemph[j]));
         }
-        // arrayList[i]->mergeStatus = (int*)malloc(4*sizeof(int));
-        // for (j = 0; j < 4; j++) {
-        //     arrayList[i]->mergeStatus[i] = 2;
-        // }
+        sem_init(&(arrayList[i]->printSemaphore), 0, 1);
     }
 }
 int* getFreeArray() {
@@ -141,6 +138,7 @@ int* getFreeArray() {
             arrayList[i]->free = 0;
             int* free_return = arrayList[i]->workArray;
             printf("Returning array %p @ %d !!\n", free_return, i);
+            sem_wait(&(arrayList[i]->printSemaphore));
             return free_return;
         }
         // else return NULL;
@@ -154,6 +152,7 @@ void putFreeArray(int* arr) {
         if (arrayList[i]->workArray == arr) {
             arrayList[i]->free = 1;
             sem_post(&(arrayList[i]->arraySemph));
+            sem_post(&(arrayList[i]->printSemaphore));
             printf("Array %p @ %d put successful\n", arr, i);
         }
     }
@@ -272,6 +271,9 @@ void *merger(void* inputptr) {
                 base = base-12;
                 base = base * 4;
             }
+            else if (argin->thid == 14) {
+                base = 0;
+            }
             
             
             while (1) {
@@ -285,13 +287,17 @@ void *merger(void* inputptr) {
                 if (test == 2) break;
                 if (test == 8) break;
                 if (test == 24) break;
+                if (test == 32) break;
                 sleep(1);
             }
 
             sem_t* threadSp1 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 0);
             sem_t* threadSp2 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 1);
             // sem_wait(threadSp1); sem_wait(threadSp2);
-            printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
+            if (0) {
+                if (argin->thid == 14) printf("=====>>>");
+                printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
+            }
             int i = (sz/2)-1, j = i, n = sz, tmp;
             int ii = 0, jj = sz/2; int k;
             while (i >= 0 && j >= 0) {
@@ -318,11 +324,11 @@ void *merger(void* inputptr) {
 
             for (it = 0; it < times; it++) {
                 sem_wait(&mStatS[ base+it ]);
-                printf("updating %d from %d\n", base+it, argin->thid);
+                if (0) printf("updating %d from %d\n", base+it, argin->thid);
                 mergeStatus[ base+it  ] = mergeStatus[ base+it  ] + 1;
                 sem_post(&mStatS[ base+it  ]);
             }
-
+            if (argin->thid == 14) {/*Give Print Signal*/}
             if ((argin->thid)%2 == 1) {/*do nothing*/}
             // else if ( argin->thid == 12 ) {
             //     mpA[14]->array = (argin->array);
@@ -469,7 +475,7 @@ void initMPA() {
     for (i=12; i<14; i++) {
         mpA[i]->layerElements = 2;
     }
-    mpA[15]->layerElements = 1;
+    mpA[14]->layerElements = 1;
     return;
 }
 
@@ -511,12 +517,12 @@ void initThreads() {
         r = pthread_create(&threads[i], NULL, &sorter, (void*)mergeparams); 
         if (r!=0) printf("ERROR IN THREAD CREATION %d !\n", r);
     }
-    for (i = 8; i < 14; i++) {
+    for (i = 8; i < 15; i++) {
         mergeparams = mpA[i];
         r = pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
         if (r!=0) printf("ERROR IN THREAD CREATION %d !\n", r);
     }
-    for (i = 0; i < 14; i++) {
+    for (i = 0; i < 15; i++) {
         pthread_detach(threads[i]);
     }
     // for (i = 12; i < 14; i++) {

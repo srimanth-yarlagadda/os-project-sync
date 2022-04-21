@@ -27,7 +27,7 @@ struct workarrays {
     int free;
     sem_t arraySemph;
     sem_t threadSemph[8];
-    // sem_t 
+    sem_t printSemaphore;
 };
 
 struct args {
