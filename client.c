@@ -109,6 +109,7 @@ void main() {
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
         sleep(1);
+        break;
         run--;
         scanfilename[0] += 1;
 

@@ -32,8 +32,10 @@ void *sorter(void* inputptr) {
             // sem_getvalue(threadSp, &aft);
         
             if (masterDebug) {
+                pthread_mutex_lock(&printMutex);
                 printf("Thread [%d] %lu before %d after %d for semaphore %p\n", 
                 (argin->array_offset)/4, (long unsigned int)pthread_self(), bef, aft, threadSp);
+                pthread_mutex_unlock(&printMutex);
             }
 
             int i, j, tmp, min; int n = argin->array_size;
@@ -65,10 +67,13 @@ void *sorter(void* inputptr) {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array = (argin->array);
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2*(argin->thid)/2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->thisRequest = argin->thisRequest;
                 
                 if (0) {
+                    pthread_mutex_lock(&printMutex);
                     printf("SIG %d from %d (Sorter) - ar %p, offset %d, size %d\n", 
                     (l0_thread_count) + ((argin->thid)/2), argin->thid, argin->array, (argin->array_size)*2*(argin->thid)/2, (argin->array_size)*2 );
+                    pthread_mutex_unlock(&printMutex);
                 }
                 
                 sem_post(&mpS[ (l0_thread_count) + ((argin->thid)/2)]);
@@ -134,8 +139,10 @@ void *merger(void* inputptr) {
             sem_t* threadSp2 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 1);
             // sem_wait(threadSp1); sem_wait(threadSp2);
             if (0) {
+                pthread_mutex_lock(&printMutex);
                 if (argin->thid == 14) printf("=====>>>");
                 printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
+                pthread_mutex_unlock(&printMutex);
             }
             int i = (sz/2)-1, j = i, n = sz, tmp;
             int ii = 0, jj = sz/2; int k;
@@ -154,21 +161,31 @@ void *merger(void* inputptr) {
                     j--;
                 }
                 if (debug) {
+                    pthread_mutex_lock(&printMutex);
                     printf("First element in thread is : %d and pointer is : %p\n", array[0], array);
                     printf("Debug:\n");
                     printer(array, sz);
                     printf("ii is %d, jj is %d, [i,j]: %d %d\n\n", ii, jj, i, j);
+                    pthread_mutex_unlock(&printMutex);
                 }
             }
 
             for (it = 0; it < times; it++) {
                 sem_wait(&mStatS[ base+it ]);
-                if (0) printf("updating %d from %d\n", base+it, argin->thid);
+                if (0) {
+                    pthread_mutex_lock(&printMutex);
+                    printf("updating %d from %d\n", base+it, argin->thid);
+                    pthread_mutex_unlock(&printMutex);
+                }
                 mergeStatus[ base+it  ] = mergeStatus[ base+it  ] + 1;
                 sem_post(&mStatS[ base+it  ]);
             }
             if (argin->thid == 14) {
                 /*Give Print Signal*/
+                mpA[15]->array = argin->array;
+                mpA[15]->array_size = argin->array_size;
+                mpA[15]->thisRequest = argin->thisRequest;
+                sem_post(&mpS[15]);
                 sem_post(getPrintSemaphore(argin->array));
             }
             if ((argin->thid)%2 == 1) {/*do nothing*/}
@@ -187,9 +204,12 @@ void *merger(void* inputptr) {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array = (argin->array);
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2* ((argin->thid)-(argin->array_size))/2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->thisRequest = argin->thisRequest;
                 if (0) {
+                    pthread_mutex_lock(&printMutex);
                     printf("SIG %d from %d (Merger) - ar %p, offset %d, size %d\n", 
                     (l0_thread_count) + ((argin->thid)/2), argin->thid, argin->array, (argin->array_size)*2*(argin->thid)/2, (argin->array_size)*2 );
+                    pthread_mutex_unlock(&printMutex);
                 }
                 sem_post(&mpS[(l0_thread_count) + ((argin->thid)/2)]);
             }

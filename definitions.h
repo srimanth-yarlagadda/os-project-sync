@@ -8,13 +8,14 @@
 #define masterDebug 0
 #define l0_thread_count 8
 
+int numRequests;
+
 void arraySort_HL(void* ap);
 void *arraySort(void* ap);
 void *sorter(void* inputptr);
 void *merger(void* inputptr);
 sem_t* getThreadSemph(int* array, int offset);
 sem_t* getPrintSemaphore(int* array);
-
 
 pthread_t threads[nthreadsTotal];
 sem_t sorterFnMain;
@@ -33,6 +34,7 @@ struct request {
     char filename[200];
     int* input_array;
     int input_length;
+    int reqID;
     struct request* next;
 };
 
@@ -42,6 +44,7 @@ struct workarrays {
     sem_t arraySemph;
     sem_t threadSemph[8];
     sem_t printSemaphore;
+    struct request* thisRequest;
 };
 
 struct args {
@@ -51,4 +54,5 @@ struct args {
     sem_t* semph;
     int thid;
     int layerElements;
+    struct request* thisRequest;
 };
