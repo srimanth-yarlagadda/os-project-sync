@@ -16,7 +16,7 @@ pthread_cond_t condWait[4];
 pthread_mutex_t mergeStatusMutex[4];
 
 struct request {
-    char* filename;
+    char filename[200];
     int* input_array;
     int input_length;
     struct request* next;

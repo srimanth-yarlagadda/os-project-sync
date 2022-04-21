@@ -108,17 +108,22 @@ void main() {
         struct file_details* request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
-        // break;
         sleep(1);
         run--;
         scanfilename[0] += 1;
-        // break;
 
         request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
         run--;
-        scanfilename[0] -= 1;
+        scanfilename[0] += 1;
+        sleep(1);
+
+        request = read_request(scanfilename);
+        send_to_server(request->filename, request->input_array, request->input_length);
+        free(request);
+        run--;
+        scanfilename[0] -= 2;
         sleep(1);
     }
     printf(" *** Ending Client *** \n");

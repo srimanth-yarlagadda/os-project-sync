@@ -420,7 +420,7 @@ struct request* receive(int soc) {
 
     char fname[200]; int input_length; int* input_buffer;
     recv(acceptance_fd, &fname, sizeof(fname), 0);
-    // printf("RECV %s\n", fname);
+    // printf("RECV NAME:  %s\n", fname);
     recv(acceptance_fd, &input_length, sizeof(int), 0);
     // printf("Array %s Size is: %d\n", fname, input_length);
     
@@ -436,7 +436,8 @@ struct request* receive(int soc) {
     // close(soc);
     close(acceptance_fd);
     struct request* req = (struct request*) malloc(sizeof(struct request));
-    req->filename = fname;
+    *(req->filename) = *fname;
+    // printf("RECV NAME:  %s\n", req->filename);
     req->input_array = input_buffer;
     req->input_length = input_length;
 
@@ -599,11 +600,9 @@ int main() {
         char fname[200];
         
         while (run>0) {
-            // fp = fopen("op.txt", "w");
-            sleep(2);
+            printf("\n");
             array = getFreeArray();
             if (array != NULL) {
-            
                 read(to_cal[0], &fname, sizeof(fname));
                 write(from_cal[1], &read_success, sizeof(read_success));
                 // printf("Request \"%s\"\n\t", fname);
@@ -619,7 +618,7 @@ int main() {
                 printf("RECD:\n"); printer(array, 32);
 
                 struct request* newReq = (struct request*) malloc(sizeof(struct request));
-                newReq->filename = fname;
+                *(newReq->filename) = *fname;
                 newReq->input_array = array;
                 newReq->input_length = array_size;
                 
@@ -646,13 +645,14 @@ int main() {
 
 
                 sem_wait(getPrintSemaphore(array));    
-                printf("Printing after signal:\n");
+                printf("Printing Result of Request %s:\n", newReq->filename);
                 // sleep(20);
                 printer(array, 32);
             
                 putFreeArray(array);
                 free(newReq);
                 clearMergeParams();
+                // fname = "";
                 run--;
             }
             else {
@@ -662,18 +662,13 @@ int main() {
 
     }
     else {
+        
         close(to_cal[0]);
         int socket = createServer();
         struct request* currentreq;
         int* arr;
         int i, read_status = -1;
 
-        // int* testar = (int*) malloc(12*sizeof(int));
-        // printf("%p %p\n", testar, testar+4);
-
-
-        // snprintf(holdbuffer, sizeof(holdbuffer), "Hello ");
-        // snprintf(holdbuffer, sizeof(holdbuffer), "World !!");
         while (run>0) {
             currentreq = receive(socket);
             arr = currentreq->input_array;
