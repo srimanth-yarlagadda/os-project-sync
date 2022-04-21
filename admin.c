@@ -151,8 +151,8 @@ void putFreeArray(int* arr) {
     for (i=0;i<5;i++) {
         if (arrayList[i]->workArray == arr) {
             arrayList[i]->free = 1;
-            sem_post(&(arrayList[i]->arraySemph));
             sem_post(&(arrayList[i]->printSemaphore));
+            sem_post(&(arrayList[i]->arraySemph));
             printf("Array %p @ %d put successful\n", arr, i);
         }
     }
@@ -519,7 +519,19 @@ void *arraySort(void* ap) {
     return;
 }
 
-int tar[12];
+void clearMergeParams() {
+    int i;
+    struct args *mergeparams;
+    for ( i = 0; i < nthreadsTotal; i++) {
+        mergeparams = mpA[i];
+        sem_wait(&mpS[i]);
+    }
+    for ( i = 0; i < 8; i++) {
+        mergeStatus[i] = 0;
+    }
+    return;
+}
+
 
 void initThreads() {
     int i,r;
@@ -637,9 +649,10 @@ int main() {
                 printf("Printing after signal:\n");
                 // sleep(20);
                 printer(array, 32);
-                // printf("\nReturned without waiting in HL\n");
-                // putFreeArray(array);
+            
+                putFreeArray(array);
                 free(newReq);
+                clearMergeParams();
                 run--;
             }
             else {
