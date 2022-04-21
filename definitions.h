@@ -1,8 +1,22 @@
 #define nthreadsTotal 16
+#define max_string_size 512
+#define mext 13
+#define createthreads 16 // 8+4+2+1+1
+#define nthreadsTotal 16
+#define max_array_size 1024
+#define detachThreads 1
+#define masterDebug 0
+#define l0_thread_count 8
 
 void arraySort_HL(void* ap);
 void *arraySort(void* ap);
+void *sorter(void* inputptr);
+void *merger(void* inputptr);
+sem_t* getThreadSemph(int* array, int offset);
+sem_t* getPrintSemaphore(int* array);
 
+
+pthread_t threads[nthreadsTotal];
 sem_t sorterFnMain;
 sem_t printSignal;
 pthread_mutex_t printMutex;
