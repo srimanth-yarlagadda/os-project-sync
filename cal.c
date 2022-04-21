@@ -68,11 +68,19 @@ void *sorter(void* inputptr) {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2*(argin->thid)/2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->thisRequest = argin->thisRequest;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size_absolute = argin->array_size_absolute;
                 
                 if (0) {
                     pthread_mutex_lock(&printMutex);
                     printf("SIG %d from %d (Sorter) - ar %p, offset %d, size %d\n", 
                     (l0_thread_count) + ((argin->thid)/2), argin->thid, argin->array, (argin->array_size)*2*(argin->thid)/2, (argin->array_size)*2 );
+                    pthread_mutex_unlock(&printMutex);
+                }
+
+                if (0) {
+                    pthread_mutex_lock(&printMutex);
+                    printf("Thread %d: ", argin->thid);
+                    printer(argin->array, n);
                     pthread_mutex_unlock(&printMutex);
                 }
                 
@@ -205,6 +213,7 @@ void *merger(void* inputptr) {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2* ((argin->thid)-(argin->array_size))/2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size = (argin->array_size)*2;
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->thisRequest = argin->thisRequest;
+                mpA[(l0_thread_count) + ((argin->thid)/2)]->array_size_absolute = argin->array_size_absolute;
                 if (0) {
                     pthread_mutex_lock(&printMutex);
                     printf("SIG %d from %d (Merger) - ar %p, offset %d, size %d\n", 

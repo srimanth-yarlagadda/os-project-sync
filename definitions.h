@@ -51,6 +51,7 @@ struct args {
     int* array;
     int array_offset;
     int array_size;
+    int array_size_absolute;
     sem_t* semph;
     int thid;
     int layerElements;

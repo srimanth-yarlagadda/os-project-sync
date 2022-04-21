@@ -47,10 +47,10 @@ void *threadPrinter(void *printArgs) {
             int* arr = argin->array; int n = argin->array_size;
             int i, j=4;
             pthread_mutex_lock(&printMutex);
-            printf("[RESULT %2d]: REQUEST NAME: %s REQUEST ID: %d\n[", argin->array_size,
+            printf("[RESULT %2d]: REQUEST NAME: %s REQUEST ID: %d\n[", argin->array_size_absolute,
             (argin->thisRequest)->filename, (argin->thisRequest)->reqID);
             fflush(stdout);
-            for (i = 0; i < 32; i++) {
+            for (i = 0; i < argin->array_size_absolute; i++) {
                 if (j==0) {
                     printf("\b] ["); j = 4;
                     fflush(stdout);
@@ -426,12 +426,13 @@ int main() {
                 for ( i = 0; i < 8; i++ ){
                     mergeparams = mpA[i];
                     mergeparams->array_offset = inc;
-                    mergeparams->array_size = 4;
+                    mergeparams->array_size = (newReq->input_length)/8;
+                    mergeparams->array_size_absolute = newReq->input_length;
                     mergeparams->array = array + inc;
                     mergeparams->thisRequest = newReq;
                     // printf("Semp ptr %p\n", &mpS[i]);
                     sem_post(&mpS[i]);
-                    inc += 4;
+                    inc += (newReq->input_length)/8;
                 }
 
 

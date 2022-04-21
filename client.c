@@ -98,7 +98,7 @@ void send_to_server(char* fname, int* arrayToBeSent, int input_length) {
 void main() {
     system("clear");
     int clientid, run = 12;
-    char scanfilename[200] = "i";
+    char scanfilename[200] = "k";
     while(run > 0) {
         // printf("Enter filename: ");
         // scanf("%s", scanfilename);
@@ -109,8 +109,8 @@ void main() {
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
         sleep(1);
-        break;
         run--;
+        break;
         scanfilename[0] += 1;
 
         request = read_request(scanfilename);
@@ -126,6 +126,7 @@ void main() {
         run--;
         scanfilename[0] -= 2;
         sleep(1);
+        break;
     }
     printf(" *** Ending Client *** \n");
     return;
