@@ -21,7 +21,7 @@ sem_t* getPrintSemaphore(int* array);
 pthread_t threads[nthreadsTotal];
 sem_t sorterFnMain;
 sem_t printSignal;
-pthread_mutex_t printMutex;
+pthread_mutex_t printMutex, queueMutex;
 
 struct args* mpA[nthreadsTotal];
 sem_t        mpS[nthreadsTotal];

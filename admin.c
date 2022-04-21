@@ -76,6 +76,17 @@ void *threadPrinter(void *printArgs) {
 struct request* reqHead = NULL;
 struct request* reqTail = NULL;
 
+void printReqQ() {
+    struct request* tmp;
+    tmp = reqHead;
+    while(tmp!=NULL) {
+        printf("%p ", tmp);
+        tmp=tmp->next;
+    }
+    printf("\n");
+    return;
+}
+
 void insertReq(struct request* r)  {
     if (reqHead == NULL) {
         reqHead = r;
@@ -89,10 +100,16 @@ void insertReq(struct request* r)  {
 }
 
 struct request* getReq() {
-    if (reqHead == NULL) return NULL;
+    struct request* tmp;
+    if (reqHead == NULL) {
+        // printf("in if\n");
+        return NULL;
+    }
     else {
-        struct request* tmp = reqHead;
+        // printf("Else returning..");
+        tmp = reqHead;
         reqHead = reqHead->next;
+        // printf("%p\n", tmp);
         return tmp;
     }
 }
@@ -380,6 +397,22 @@ void initThreads() {
     return;
 }
 
+void* receiver(void* sock) {
+    struct request *r;
+    int s = *(int*)sock;
+    while(1) {
+        r = receive(s);
+        pthread_mutex_lock(&queueMutex);
+        insertReq(r);
+        pthread_mutex_unlock(&queueMutex);
+        // pthread_mutex_lock(&printMutex);
+        // printf("receiver thread\n");
+        // printReqQ();
+        // pthread_mutex_unlock(&printMutex);
+        // sleep(1);
+    }
+}
+
 int main() {
     // system("clear");
     int m=8,a=5,q=5,d=0;
@@ -493,13 +526,30 @@ int main() {
         int socket = createServer();
         struct request* currentreq;
         int* arr;
-        int i, read_status = -1;
+        int i, read_status = -1, r;
         killval = 0;
+
+        pthread_t rcv;
+        r = pthread_create(&rcv, NULL, &receiver, (void*)&socket);
+        if (r!=0) printf("ERROR IN THREAD [%2d] CREATION - %d !\n", -1, r);
+        pthread_detach(rcv);
+
+        pthread_mutex_init(&queueMutex, NULL);
 
         // signal(SIGINT, ctrlc_handle);
 
         while (run>0 && (killval != 1)) {
-            currentreq = receive(socket);
+            currentreq = NULL;
+            // currentreq = receive(socket);
+            while (currentreq == NULL) {
+                pthread_mutex_lock(&queueMutex);
+                // pthread_mutex_lock(&printMutex);
+                currentreq = getReq();
+                // printReqQ();
+                // pthread_mutex_unlock(&printMutex);
+                pthread_mutex_unlock(&queueMutex);
+                sleep(1);
+            }
             arr = currentreq->input_array;
             // printer(arr,32);
         
@@ -517,6 +567,7 @@ int main() {
                 if (read_status == -1) {printf("Read failure from child !!");}
             }
             free(arr);
+            free(currentreq);
             run--;
         }
 
