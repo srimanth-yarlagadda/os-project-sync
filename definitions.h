@@ -10,7 +10,8 @@ pthread_mutex_t printMutex;
 struct args* mpA[nthreadsTotal];
 sem_t        mpS[nthreadsTotal];
 sem_t        mpStest[8];
-int          mergeStatus[4];
+int          mergeStatus[8];
+sem_t        mStatS[8];
 pthread_cond_t condWait[4];
 pthread_mutex_t mergeStatusMutex[4];
 
@@ -35,4 +36,5 @@ struct args {
     int array_size;
     sem_t* semph;
     int thid;
+    int layerElements;
 };
