@@ -19,13 +19,13 @@ void ctrlc_handle() {
 }
 
 void printer(int* array, int n) {
-    int i, j=4;
+    int i, j=10;
     // pthread_mutex_lock(&printMutex);
     printf("[");
     fflush(stdout);
     for (i = 0; i < n; i++) {
         if (j==0) {
-            printf("\b] ["); j = 4;
+            printf("\b] ["); j = 10;
             fflush(stdout);
         }
         printf("%d ", array[i]); 
@@ -47,17 +47,17 @@ void *threadPrinter(void *printArgs) {
         }
         else {
             int* arr = argin->array; int n = argin->array_size;
-            int i, jj = 4, j=jj;
+            int i, jj = 10, j=jj;
             pthread_mutex_lock(&printMutex);
-            printf("[RESULT %2d]: REQUEST NAME: %s REQUEST ID: %d\n[", argin->array_size_absolute,
-            (argin->thisRequest)->filename, (argin->thisRequest)->reqID);
+            printf("Result :: RequestID = %d, Request Name: %s, N = %2d\n[", (argin->thisRequest)->reqID, 
+            (argin->thisRequest)->filename, argin->array_size_absolute);
             fflush(stdout);
             for (i = 0; i < argin->array_size_absolute; i++) {
                 if (j==0) {
                     printf("\b]\n["); j = jj;
                     fflush(stdout);
                 }
-                printf("%6d ", arr[i]); 
+                printf("%d ", arr[i]); 
                 fflush(stdout);
                 j--;
             }

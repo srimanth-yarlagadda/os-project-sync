@@ -11,7 +11,7 @@ int numRequests;
 int numRequestsInQ;
 int killval;
 
-int Q,a;
+int Q,aa;
 
 void arraySort_HL(void* ap);
 void *arraySort(void* ap);
