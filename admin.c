@@ -88,13 +88,22 @@ void printReqQ() {
 }
 
 void insertReq(struct request* r)  {
+    if (numRequestsInQ >= Q) {
+        pthread_mutex_lock(&printMutex);
+        printf(" ===== Queue at Capacity. Ignoring this [\" %s \"] request ===== \n", r->filename);
+        pthread_mutex_unlock(&printMutex);
+        free(r);
+        return;
+    }
     if (reqHead == NULL) {
         reqHead = r;
         reqTail = r;
+        numRequestsInQ += 1;
     }
     else {
         reqTail->next = r;
         reqTail = r;
+        numRequestsInQ += 1;
     }
     return;
 }
@@ -109,12 +118,13 @@ struct request* getReq() {
         // printf("Else returning..");
         tmp = reqHead;
         reqHead = reqHead->next;
+        numRequestsInQ -= 1;
         // printf("%p\n", tmp);
         return tmp;
     }
 }
 
-struct workarrays* arrayList[5];
+struct workarrays* arrayList[20];
 
 void initArrays(int a) {
     int i = 0, j;
@@ -134,7 +144,7 @@ void initArrays(int a) {
 }
 struct workarrays* getFreeArray() {
     int i, slock_before, slock_after, j;
-    for (i=0;i<5;i++) {
+    for (i=0;i<a;i++) {
         if (arrayList[i]->free==1) {
             pthread_mutex_lock(&printMutex); 
                 // printf("Trying...%d...", i);
@@ -152,7 +162,7 @@ struct workarrays* getFreeArray() {
 
 void putFreeArray(int* arr) {
     int i;
-    for (i=0;i<5;i++) {
+    for (i=0;i<a;i++) {
         if (arrayList[i]->workArray == arr) {
             arrayList[i]->free = 1;
             sem_post(&(arrayList[i]->printSemaphore));
@@ -167,6 +177,8 @@ void putFreeArray(int* arr) {
 
 void *putFreeArrayThread(void* inputptr) {
     while(1) {
+        // struct args* ip = (struct args*) inputptr;
+        // int* arr = ip->array;
         int* arr = (int*) inputptr;
         sem_wait(&mpS[16]);
         if (arr == NULL) {
@@ -174,26 +186,30 @@ void *putFreeArrayThread(void* inputptr) {
         }
         else {
             int i;
-            for (i=0;i<5;i++) {
+            for (i=0;i<a;i++) {
                 if (arrayList[i]->workArray == arr) {
                     arrayList[i]->free = 1;
+                    free(arrayList[i]->thisRequest);
+                    arrayList[i]->thisRequest = NULL;
                     sem_post(&(arrayList[i]->printSemaphore));
                     sem_post(&(arrayList[i]->arraySemph));
-                    pthread_mutex_lock(&printMutex); 
-                        printf("Array %p @ %d put successful ON THREAD\n", arr, i);
-                    pthread_mutex_unlock(&printMutex);
+                    if (0) {
+                        pthread_mutex_lock(&printMutex); 
+                            printf("Array %p @ %d put successful ON THREAD\n", arr, i);
+                        pthread_mutex_unlock(&printMutex);
+                    }
                 }
             }
             arr = NULL;
             sem_post(&mpS[16]);
-            if (forcesleep) sleep(3);
+            if (fs) sleep(3);
         }
     }
 }
 
 sem_t* getThreadSemph(int* array, int offset) {
     int i, j;
-    for (i=0;i<5;i++) {
+    for (i=0;i<a;i++) {
         if (arrayList[i]->workArray==array) {
             for (j = 0; j < 8; j++) {
                 return &(arrayList[i]->threadSemph[offset]);
@@ -204,7 +220,7 @@ sem_t* getThreadSemph(int* array, int offset) {
 
 sem_t* getPrintSemaphore(int* array) {
     int i;
-    for (i=0;i<5;i++) {
+    for (i=0;i<a;i++) {
         if (arrayList[i]->workArray==array) {
             return &(arrayList[i]->printSemaphore);
         }
@@ -409,27 +425,29 @@ void* receiver(void* sock) {
         // printf("receiver thread\n");
         // printReqQ();
         // pthread_mutex_unlock(&printMutex);
-        // sleep(1);
+        
     }
 }
 
 int main() {
     // system("clear");
-    int m=8,a=5,q=5,d=0;
+    int m=8,q=5,d=0;
+    a=20;
     // printf("Enter number of parallel threads: \n");
     // scanf("%d",&m);
     // printf("Enter number of arrays: \n");
     // scanf("%d",&a);
-    // printf("Enter queue size: \n");
-    // scanf("%d",&q);
+    printf("Enter queue size: \n");
+    scanf("%d",&Q);
     // printf("Enable debug? [1 for yes / 0 for no]: \n");
     // scanf("%d",&d);
-    printf("Starting with following parameters: M %d, A %d, D %d, Q %d\n", m,a,d,q);
+    printf("Starting program...\n");
+    numRequestsInQ = 0;
     int p, to_cal[2], from_cal[2];
     numRequests = 0;
     if (pipe(to_cal) == -1) {printf("Send pipe creation error !");};
     if (pipe(from_cal) == -1) {printf("Receive pipe creation error !");};
-    int run = 10;
+    int run = 500;
     p = fork();
     
     if (p == 0) {
@@ -548,7 +566,7 @@ int main() {
                 // printReqQ();
                 // pthread_mutex_unlock(&printMutex);
                 pthread_mutex_unlock(&queueMutex);
-                sleep(1);
+                sleep(1); /* to reduce the frequency of busy waiting */
             }
             arr = currentreq->input_array;
             // printer(arr,32);

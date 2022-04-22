@@ -5,11 +5,13 @@
 #define detachThreads 1
 #define masterDebug 0
 #define l0_thread_count 8
-#define forcesleep 0 /* make this 1 to test usage of multiple arrays - forces return array thread to delay */
+#define fs 0 /* make this 1 to test usage of multiple arrays - forces return array thread to delay */
 
 int numRequests;
-// int run;
+int numRequestsInQ;
 int killval;
+
+int Q,a;
 
 void arraySort_HL(void* ap);
 void *arraySort(void* ap);

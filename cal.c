@@ -139,7 +139,7 @@ void *merger(void* inputptr) {
                 if (test == 8) break;
                 if (test == 24) break;
                 if (test == 32) break;
-                sleep(1);
+    
             }
 
             sem_t* threadSp1 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 0);

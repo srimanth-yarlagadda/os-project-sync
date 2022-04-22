@@ -97,11 +97,25 @@ void send_to_server(char* fname, int* arrayToBeSent, int input_length) {
 
 void main() {
     system("clear");
-    int clientid, run = 12;
-    char scanfilename[200] = "k";
+    int clientid, run = 500;
+    
+    char scanfilename[200];
+    // char ip_address; memset(ip_address, 0, 50);
+    // strcpy(ip_address, "10.176.92.14");
+
+    // char readip[200]; char def[200];
+    // strcpy(def, "default");
+    // printf("Enter server IP (\"default\" for 10.176.92.14): ");
+    // scanf("%s", readip);
+
+    // if (strcmp(readip, def) != 0) {
+        // ip_address = readip;
+    // }
+
     while(run > 0) {
         printf("Enter filename: ");
         scanf("%s", scanfilename);
+        
         // scanfilename = "i";
         if (strcmp(scanfilename, "end") == 0) break;
         struct file_details* request = read_request(scanfilename);
@@ -117,14 +131,14 @@ void main() {
         free(request);
         run--;
         scanfilename[0] -= 1;
-        sleep(1);
+    
 
         request = read_request(scanfilename);
         send_to_server(request->filename, request->input_array, request->input_length);
         free(request);
         run--;
         scanfilename[0] += 2;
-        sleep(1);
+    
         
     }
     */
