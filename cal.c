@@ -11,25 +11,17 @@
 #include "definitions.h"
 
 void *sorter(void* inputptr) {
-    // printf("sorter called\n");
-    // printf("Thread %lu created %d\n", (long unsigned int)pthread_self(), (int)pthread_self());
     
     while (1) {
         struct args* argin = (struct args*) inputptr;
-        // printf("%p %p \n\n\n", argin, inputptr);
         sem_wait(&mpS[argin->thid]);
         if (argin->array == NULL) {
             sem_post(&mpS[argin->thid]);
         }
         else {
-            // printf("Else sorter called\n");
             int bef = -5, aft = -1;
-            // printf("thid %d, inside else array %p\n", argin->thid, argin->array);
             sem_t* threadSp = getThreadSemph(argin->array, (argin->array_offset)/4);
             
-            // sem_getvalue(threadSp, &bef);
-            // sem_wait(threadSp);
-            // sem_getvalue(threadSp, &aft);
         
             if (masterDebug) {
                 pthread_mutex_lock(&printMutex);
@@ -41,7 +33,6 @@ void *sorter(void* inputptr) {
             int i, j, tmp, min; int n = argin->array_size;
             int* array = (int*) ((argin->array));
             
-            // printf("%d %p %d \n", argin->thid, argin->array, argin->array_offset);
             
             for (i=0; i<n-1; i++) {
                 min = i;
@@ -88,7 +79,6 @@ void *sorter(void* inputptr) {
             }
             sem_post(&mpStest[argin->thid]);
             argin->array = NULL;
-            // sem_post(threadSp);
             sem_post(&mpS[argin->thid]);
         }
     }
@@ -96,12 +86,8 @@ void *sorter(void* inputptr) {
 
 
 void *merger(void* inputptr) {
-    // printf("MERGER CALLED\n");
     while (1) {
         struct args* argin = (struct args*) inputptr;
-        // if (argin->thid==14) {
-        //     printf("MERGER CALLED THID 4\n");
-        // }
         sem_wait(&mpS[argin->thid]);
         if (argin->array == NULL) {
             sem_post(&mpS[argin->thid]);
@@ -111,7 +97,6 @@ void *merger(void* inputptr) {
             int debug = 0, test = -1;
             int sz = argin->array_size;
             int times = 8/argin->layerElements;
-            // printf("iN else mereger\n");
             int it, base;
 
             if (argin->thid >=8 && argin->thid < 12) {
@@ -144,7 +129,6 @@ void *merger(void* inputptr) {
 
             sem_t* threadSp1 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 0);
             sem_t* threadSp2 = getThreadSemph(argin->array, ((argin->array_offset)*2/sz) + 1);
-            // sem_wait(threadSp1); sem_wait(threadSp2);
             if (0) {
                 pthread_mutex_lock(&printMutex);
                 if (argin->thid == 14) printf("=====>>>");
@@ -196,17 +180,6 @@ void *merger(void* inputptr) {
                 sem_post(getPrintSemaphore(argin->array));
             }
             if ((argin->thid)%2 == 1) {/*do nothing*/}
-            // else if ( argin->thid == 12 ) {
-            //     mpA[14]->array = (argin->array);
-            //     mpA[14]->array_offset = 0;
-            //     mpA[14]->array_size = 32;
-            //     sem_post(&mpS[14]);
-            // }
-            // else if (argin->thid == 14) {
-            //     mpA[15]->array_size = (argin->array_size);
-            //     mpA[15]->array = (argin->array);
-            //     // sem_post(&mpS[15]);
-            // }
             else {
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array = (argin->array);
                 mpA[(l0_thread_count) + ((argin->thid)/2)]->array_offset = (argin->array_size)*2* ((argin->thid)-(argin->array_size))/2;
@@ -223,11 +196,7 @@ void *merger(void* inputptr) {
             }
             argin->array = NULL;
             
-            // sem_post(threadSp1); sem_post(threadSp2);
             sem_post(&mpS[argin->thid]);
-            
-            // pthread_mutex_unlock(&printMutex);
-            // break;
         }
     }
 }
@@ -236,9 +205,5 @@ void arraySort_HL(void* ap) {
     pthread_t th;
     pthread_create(&th, NULL, &arraySort, ap);
     pthread_detach(th);
-    // printf("Final: \n");
-    // printf("Ending MASTER thread\n\n");
-    // printer( (((struct args*)ap)->array), 32);
-    // pthread_join(th, NULL);
     return;
 };

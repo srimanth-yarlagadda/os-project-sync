@@ -20,7 +20,6 @@ void ctrlc_handle() {
 
 void printer(int* array, int n) {
     int i, j=10;
-    // pthread_mutex_lock(&printMutex);
     printf("[");
     fflush(stdout);
     for (i = 0; i < n; i++) {
@@ -34,11 +33,9 @@ void printer(int* array, int n) {
     }
     printf("\b]\n");
     fflush(stdout);
-    // pthread_mutex_unlock(&printMutex);
 }
 
 void *threadPrinter(void *printArgs) {
-    // printf("TP CAlled\n\n");
     while(1) {
         struct args* argin = (struct args*) printArgs;
         sem_wait(&mpS[15]);
@@ -111,15 +108,12 @@ void insertReq(struct request* r)  {
 struct request* getReq() {
     struct request* tmp;
     if (reqHead == NULL) {
-        // printf("in if\n");
         return NULL;
     }
     else {
-        // printf("Else returning..");
         tmp = reqHead;
         reqHead = reqHead->next;
         numRequestsInQ -= 1;
-        // printf("%p\n", tmp);
         return tmp;
     }
 }
@@ -133,7 +127,6 @@ void initArrays(int a) {
         arrayList[i]->workArray = (int*)malloc(1024*sizeof(int));
         arrayList[i]->free = 1;
         arrayList[i]->thisRequest = NULL;
-        // printf("INIT %p @ %d\n", arrayList[i]->workArray, i);
         sem_init(&(arrayList[i]->arraySemph), 0, 1);
         for (j = 0; j < 8; j++) {
             sem_init(&(arrayList[i]->threadSemph[j]), 0, 1);
@@ -147,11 +140,9 @@ struct workarrays* getFreeArray() {
     for (i=0;i<a;i++) {
         if (arrayList[i]->free==1) {
             pthread_mutex_lock(&printMutex); 
-                // printf("Trying...%d...", i);
                 sem_wait(&(arrayList[i]->arraySemph));
                 arrayList[i]->free = 0;
                 struct workarrays* free_return = arrayList[i];
-                // printf("Returning array %p @ %d !!\n", free_return->workArray, i); 
             pthread_mutex_unlock(&printMutex);
             sem_wait(&(arrayList[i]->printSemaphore));
             return free_return;
@@ -177,8 +168,6 @@ void putFreeArray(int* arr) {
 
 void *putFreeArrayThread(void* inputptr) {
     while(1) {
-        // struct args* ip = (struct args*) inputptr;
-        // int* arr = ip->array;
         int* arr = (int*) inputptr;
         sem_wait(&mpS[16]);
         if (arr == NULL) {
@@ -230,14 +219,12 @@ sem_t* getPrintSemaphore(int* array) {
 
 int createServer() {
     int i;
-    // following code is taken from slides used in lecture
     int soc = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in addr;
     bzero ((char *) &addr, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(1038);
-    // printf("Socket in admin.c is: %d\n", soc);
 
     int bind_ret = bind(soc, (struct sockaddr *) &addr, sizeof(addr));
     if (bind_ret < 0) {printf("======[ Error while binding ]======\n");}
@@ -254,10 +241,8 @@ struct request* receive(int soc) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(1038);
-    // printf("Socket in admin.c is: %d\n", soc);
     int listen_status = listen(soc, 100);
     if (listen_status == 0) {
-        // printf("Listening...\n");
         fflush(stdout);
     }
     else {
@@ -274,9 +259,7 @@ struct request* receive(int soc) {
 
     char fname[200]; int input_length; int* input_buffer;
     recv(acceptance_fd, &fname, sizeof(fname), 0);
-    // printf("RECV NAME:  %s\n", fname);
     recv(acceptance_fd, &input_length, sizeof(int), 0);
-    // printf("Array %s Size is: %d\n", fname, input_length);
     
     input_buffer = (int*) malloc(sizeof(int)*input_length);
     int tmp;
@@ -284,14 +267,9 @@ struct request* receive(int soc) {
         recv(acceptance_fd, &tmp, sizeof(int), 0);
         input_buffer[i] = tmp;
      }
-    // printf("Printing received data at socket: \n");
-    // printer(input_buffer, input_length);
-    // printf("\n");
-    // close(soc);
     close(acceptance_fd);
     struct request* req = (struct request*) malloc(sizeof(struct request));
     *(req->filename) = *fname;
-    // printf("RECV NAME:  %s\n", req->filename);
     req->input_array = input_buffer;
     req->input_length = input_length;
 
@@ -393,13 +371,6 @@ void initThreads() {
     for (i = 0; i < 15; i++) {
         pthread_detach(threads[i]);
     }
-    // for (i = 12; i < 14; i++) {
-        // mergeparams = mpA[i];
-        // pthread_create(&threads[i], NULL, &merger, (void*)mergeparams);
-        // if (detachThreads) pthread_detach(threads[i]);
-    // }
-    // pthread_create(&threads[14], NULL, &merger, (void*)mergeparams);
-    // if (detachThreads) pthread_detach(threads[14]);
 
     mergeparams = mpA[15];
     r = pthread_create(&threads[15], NULL, &threadPrinter, (void*)mergeparams);
@@ -421,11 +392,6 @@ void* receiver(void* sock) {
         pthread_mutex_lock(&queueMutex);
         insertReq(r);
         pthread_mutex_unlock(&queueMutex);
-        // pthread_mutex_lock(&printMutex);
-        // printf("receiver thread\n");
-        // printReqQ();
-        // pthread_mutex_unlock(&printMutex);
-        
     }
 }
 
@@ -433,14 +399,10 @@ int main() {
     // system("clear");
     int m=8,q=5,d=0;
     a=20;
-    // printf("Enter number of parallel threads: \n");
-    // scanf("%d",&m);
-    // printf("Enter number of arrays: \n");
-    // scanf("%d",&a);
+
     printf("Enter queue size: \n");
     scanf("%d",&Q);
-    // printf("Enable debug? [1 for yes / 0 for no]: \n");
-    // scanf("%d",&d);
+    
     printf("Starting program...\n");
     numRequestsInQ = 0;
     int p, to_cal[2], from_cal[2];
@@ -476,11 +438,11 @@ int main() {
             if (array != NULL) {
                 read(to_cal[0], &fname, sizeof(fname));
                 write(from_cal[1], &read_success, sizeof(read_success));
-                // printf("Request \"%s\"\n\t", fname);
+                
                 read(to_cal[0], (&array_size), sizeof(int));
                 write(from_cal[1], &read_success, sizeof(read_success));
                 
-                // array = malloc(array_size*sizeof(int));
+                
                 for (i=0; i<array_size;i++) {
                     read(to_cal[0], &(array[i]), sizeof(int));
                     write(from_cal[1], &read_success, sizeof(read_success));
@@ -503,9 +465,6 @@ int main() {
                 para->m = m;
                 para->d = d;
 
-                // sem_wait(&sorterFnMain);
-                // arraySort_HL(para);
-
                 int inc = 0;    
                 int i;
                 for ( i = 0; i < 8; i++ ){
@@ -522,12 +481,7 @@ int main() {
 
 
                 sem_wait(getPrintSemaphore(array));
-                // printf("Printing Result of Request %s:\n", newReq->filename);
-
-                // printer(array, 32);
-            
-                // putFreeArray(array);
-                // free(newReq);
+                
                 clearMergeParams();
                 memset(fname, 0, 200);
                 run--;
@@ -554,24 +508,17 @@ int main() {
 
         pthread_mutex_init(&queueMutex, NULL);
 
-        // signal(SIGINT, ctrlc_handle);
-
         while (run>0 && (killval != 1)) {
             currentreq = NULL;
-            // currentreq = receive(socket);
+        
             while (currentreq == NULL) {
                 pthread_mutex_lock(&queueMutex);
-                // pthread_mutex_lock(&printMutex);
                 currentreq = getReq();
-                // printReqQ();
-                // pthread_mutex_unlock(&printMutex);
                 pthread_mutex_unlock(&queueMutex);
                 sleep(1); /* to reduce the frequency of busy waiting */
             }
             arr = currentreq->input_array;
-            // printer(arr,32);
         
-            // printf("Sending %s from parent to child\n", currentreq->filename);
             write(to_cal[1], currentreq->filename, 200);
             read(from_cal[0], &read_status, sizeof(int));
 
